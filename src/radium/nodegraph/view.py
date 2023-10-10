@@ -72,9 +72,9 @@ class NodeGraphViewEventFilter(QtCore.QObject):
 
 
 if __name__ == "__main__":
+    from radium.nodegraph.view import NodeGraphView, NodeGraphViewEventFilter
     from radium.nodegraph.scene import NodeGraphScene
     from radium.nodegraph.node import Node
-    from radium.nodegraph.backdrop import Backdrop
 
     app = QtWidgets.QApplication([])
     scene = NodeGraphScene()
@@ -92,8 +92,6 @@ if __name__ == "__main__":
     scene.addItem(node2)
     scene.setSceneRect(-1000, -1000, 2000, 2000)
 
-    # backdrop = Backdrop("Backdrop")
-    # scene.addItem(backdrop)
 
     view = NodeGraphView()
     event_filter = NodeGraphViewEventFilter()
