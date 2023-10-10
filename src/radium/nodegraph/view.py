@@ -83,7 +83,11 @@ if __name__ == "__main__":
     node.setPos(0, 0)
     scene.addItem(node)
 
-    node2 = Node("BlurImage", ["image"], ["image"])
+    node2 = Node("ReadImage2", [], ["image"])
+    node2.setPos(0, 0)
+    scene.addItem(node2)
+
+    node2 = Node("Merge", ["image1", "image2"], ["image"])
     node2.setPos(0, 100)
     scene.addItem(node2)
     scene.setSceneRect(-1000, -1000, 2000, 2000)
