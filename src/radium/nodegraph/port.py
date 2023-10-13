@@ -1,5 +1,7 @@
 """
 A GraphicsItem that represents a port on a node. A port represents a named input or output on a node.
+
+TODO: Investigate making ports generic, and giving them a direction and a type (e.g. float, int, string, etc).
 """
 import typing
 from PySide6 import QtGui, QtWidgets
@@ -63,12 +65,6 @@ class OutputPort(Port):
 
         return super().canConnectTo(port)
 
-    def connect(self, port: "InputPort"):
-        if not self.canConnectTo(port):
-            raise ValueError(f"Cannot connect to port: {port}")
-
-        self.scene().addItem(Connection(input_port=port, output_port=self))
-
 
 class InputPort(Port):
     def __init__(self, name, parent=None):
@@ -83,9 +79,3 @@ class InputPort(Port):
             return False
 
         return super().canConnectTo(port)
-
-    def connect(self, port: "OutputPort"):
-        if not self.canConnectTo(port):
-            raise ValueError(f"Cannot connect to port: {port}")
-
-        self.scene().addItem(Connection(input_port=self, output_port=port))

@@ -1,4 +1,5 @@
 from PySide6 import QtCore, QtWidgets, QtGui, QtOpenGLWidgets
+import PySide6.QtGui
 from radium.nodegraph import util
 
 
@@ -9,30 +10,27 @@ class NodeGraphView(QtWidgets.QGraphicsView):
         self.setResizeAnchor(self.ViewportAnchor.AnchorUnderMouse)
         self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-
         self.setViewport(QtOpenGLWidgets.QOpenGLWidget())
 
     def drawBackground(self, painter: QtGui.QPainter, rect: QtCore.QRectF) -> None:
         super().drawBackground(painter, rect)
 
-        # TODO: make this a signal/slot relationship? e.g. scene.gridSizeChanged.connect(self.setGridSize)
-        if hasattr(self.scene(), "gridSize"):
-            grid_size = self.scene().gridSize()
-        else:
-            grid_size = 20
-
-        util.draw_grid(painter, rect, grid_size)
+        # TODO: Theme Support
+        util.draw_grid(painter, rect, 20)
 
     def installEventFilter(self, filterObj):
         if isinstance(filterObj, NodeGraphViewEventFilter):
             print(
-                "WARNING: NodeGraphViewEventFilter should be installed on the views viewport, not the view"
+                "WARNING: NodeGraphViewEventFilter should be installed"
+                " on the views viewport, not the view"
             )
 
         super().installEventFilter(filterObj)
 
 
 class NodeGraphViewEventFilter(QtCore.QObject):
+    nodeMenuRequested = QtCore.Signal()
+
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self._mouse_down_pos = None
@@ -48,7 +46,17 @@ class NodeGraphViewEventFilter(QtCore.QObject):
             self._mouse_down_pos = event.position()
             return super().eventFilter(viewport, event)
 
+        elif event.type() == QtCore.QEvent.Type.KeyPress:
+            self._mouse_down_pos = None
+
         return super().eventFilter(viewport, event)
+
+    def keyPressEvent(self, viewport, event: QtGui.QKeyEvent) -> bool:
+        if event.key() == QtCore.Qt.Key.Tab:
+            self.nodeMenuRequested.emit()
+            return True
+
+        return False
 
     def mouseWheelEvent(self, viewport, event: QtGui.QWheelEvent) -> bool:
         zoom = 1.1 if event.angleDelta().y() > 0 else 0.9
@@ -63,21 +71,24 @@ class NodeGraphViewEventFilter(QtCore.QObject):
 
             vertical_scroll_bar = view.verticalScrollBar()
             horizontal_scroll_bar = view.horizontalScrollBar()
-            horizontal_scroll_bar.setValue(horizontal_scroll_bar.value() - int(delta.x()))
-            vertical_scroll_bar.setValue(vertical_scroll_bar.value() - int(delta.y()))
+
+            x = horizontal_scroll_bar.value() - int(delta.x())
+            y = vertical_scroll_bar.value() - int(delta.y())
+
+            horizontal_scroll_bar.setValue(x)
+            vertical_scroll_bar.setValue(y)
 
             return True
-        else:
-            return False
+        return False
 
 
 if __name__ == "__main__":
-    from radium.nodegraph.view import NodeGraphView, NodeGraphViewEventFilter
-    from radium.nodegraph.scene import NodeGraphScene
+    from radium.nodegraph.scene import NodeGraphSceneController
     from radium.nodegraph.node import Node
 
     app = QtWidgets.QApplication([])
-    scene = NodeGraphScene()
+    scene = QtWidgets.QGraphicsScene()
+    controller = NodeGraphSceneController(scene)
 
     node = Node("ReadImage", [], ["image"])
     node.setPos(0, 0)
@@ -91,7 +102,6 @@ if __name__ == "__main__":
     node2.setPos(0, 100)
     scene.addItem(node2)
     scene.setSceneRect(-1000, -1000, 2000, 2000)
-
 
     view = NodeGraphView()
     event_filter = NodeGraphViewEventFilter()

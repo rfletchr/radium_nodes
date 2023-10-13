@@ -1,15 +1,17 @@
 """
-A GraphicsItem that represents a dot. A dot is a NoOp node that can be used to aid in the layout of a node graph by
-adding corners to graph connections.
+A dot is a NoOp node that can be used to aid in the layout of a node graph
+by adding corners to graph connections.
 """
-import copy
-import typing
 
 from PySide6 import QtCore, QtGui, QtWidgets
 from radium.nodegraph.port import InputPort, OutputPort
 
 
 class DotInputPort(InputPort):
+    """
+    A custom input node used by dots. This has a larger hit area.
+    """
+
     def __init__(self, name, parent=None):
         super().__init__(name, parent=parent)
         self.setBrush(QtGui.QColor(0, 0, 0, 32))
@@ -20,6 +22,10 @@ class DotInputPort(InputPort):
 
 
 class DotOutputPort(OutputPort):
+    """
+    A custom output node used by dots. This has a larger hit area.
+    """
+
     def __init__(self, name, parent=None):
         super().__init__(name, parent=parent)
         self.setBrush(QtGui.QColor(0, 0, 0, 32))
@@ -30,6 +36,10 @@ class DotOutputPort(OutputPort):
 
 
 class Dot(QtWidgets.QGraphicsEllipseItem):
+    """
+    A Dot node is a NoOp node used for scene layout.
+    """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFlag(self.GraphicsItemFlag.ItemIsMovable)

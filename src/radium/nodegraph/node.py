@@ -1,5 +1,8 @@
 """
 A GraphicsItem that represents a node in a node graph.
+
+TODO: Add a "Side" enum which defines what side of the node a port is on. e.g. N S W E
+
 """
 import typing
 
@@ -32,6 +35,9 @@ class Node(QtWidgets.QGraphicsPathItem):
 
         # This triggers a layout call.
         self.setName(name)
+
+    def name(self):
+        return self._name
 
     def setName(self, value, layout=True):
         rect = QtCore.QRectF(self._font_metrics.boundingRect(value))
