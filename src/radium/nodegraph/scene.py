@@ -221,8 +221,8 @@ class InsertDotTool(Tool):
     Handles creation of dots
     """
 
-    def __init__(self, scene: "NodeGraphScene"):
-        super().__init__(scene)
+    def __init__(self, controller: "NodeGraphSceneController"):
+        super().__init__(controller)
         self.line_1 = PreviewLine()
         self.line_2 = PreviewLine()
         self.input_port = None
@@ -287,8 +287,8 @@ class ShiftDragCloneTool(Tool):
     Handles cloning of nodes when shift dragging.
     """
 
-    def __init__(self, scene: "NodeGraphScene"):
-        super().__init__(scene)
+    def __init__(self, controller: "NodeGraphSceneController"):
+        super().__init__(controller)
         self.preview_rect = PreviewRect()
         self.preview_rect.setBrush(QtGui.QColor(0, 0, 0, 64))
 
