@@ -13,6 +13,63 @@ from radium.nodegraph.port import InputPort, OutputPort, Port
 from radium.nodegraph.connection import Connection
 
 
+def get_nearby_port(node: Node, pos: QtCore.QPointF, port_type):
+    """
+    Returns the port closest to the given position.
+    """
+    if issubclass(port_type, InputPort):
+        ports = node.inputs.values()
+    elif issubclass(port_type, OutputPort):
+        ports = node.outputs.values()
+    else:
+        raise TypeError("port_type must be subclass of InputPort, OutputPort")
+
+    closest_port = None
+    closest_distance = 100000
+
+    for port in ports:
+        distance = (port.scenePos() - pos).manhattanLength()
+        if distance < closest_distance:
+            closest_distance = distance
+            closest_port = port
+
+    return closest_port
+
+
+def get_potential_port(
+    port: Port, item: typing.Union[Port, Dot, Node], event_pos: QtCore.QPointF
+):
+    """
+    A utility function that tries to return a port from the given item.
+
+    Args:
+        port: The port that is being connected to.
+        item: The item that is being connected to.
+        event_pos: The position of the mouse event this is used to determine
+            the closest port if the item is a node.
+    """
+    if not isinstance(port, (InputPort, OutputPort)):
+        raise TypeError("port must be an instance of InputPort or OutputPort")
+
+    if not isinstance(item, (Port, Dot, Node)):
+        raise TypeError("item must be an instance of Port, Dot or Node")
+
+    if isinstance(item, Port):
+        return item
+
+    elif isinstance(item, Dot):
+        if isinstance(port, InputPort):
+            return item.output
+        else:
+            return item.input
+
+    else:  # else its a Node
+        if isinstance(port, InputPort):
+            return get_nearby_port(item, event_pos, OutputPort)
+        else:
+            return get_nearby_port(item, event_pos, InputPort)
+
+
 class PreviewLine(QtWidgets.QGraphicsLineItem):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -135,25 +192,11 @@ class ConnectionTool(Tool):
 
         scene_item = self.controller.scene.itemAt(event.scenePos(), QtGui.QTransform())
 
-        if isinstance(scene_item, Port) and scene_item.canConnectTo(self.start_port):
-            end_port = scene_item
+        if isinstance(scene_item, (Port, Dot, Node)):
+            end_port = get_potential_port(self.start_port, scene_item, event.scenePos())
+            if end_port.canConnectTo(self.start_port):
+                self.controller.createConnection(self.start_port, end_port)
 
-        # here dots are a special case as they're a bit finicky to click on. If the user releases the mouse
-        # on a dot, we'll try to connect to the dot's input or output port depending on the start port.
-        elif isinstance(scene_item, Dot):
-            if isinstance(self.start_port, InputPort):
-                end_port = scene_item.output
-            elif isinstance(self.start_port, OutputPort):
-                end_port = scene_item.input
-            else:
-                end_port = None
-        else:
-            end_port = None
-
-        if end_port is None:
-            return False
-
-        self.controller.createConnection(self.start_port, end_port)
         self.controller.clearTool()
         return True
 
@@ -178,6 +221,7 @@ class EditConnectionTool(Tool):
     def mousePressEvent(self, event, item: Connection):
         self.controller.scene.removeItem(item)
 
+        # get the distance to the input and output ports
         distance_to_input = (
             event.scenePos() - item.input_port.scenePos()
         ).manhattanLength()
@@ -185,6 +229,8 @@ class EditConnectionTool(Tool):
             event.scenePos() - item.output_port.scenePos()
         ).manhattanLength()
 
+        # set the start port the the furthest port, conceptually your disconnecting
+        # the closest port.
         if distance_to_input < distance_to_output:
             self._start_port = item.output_port
         else:
@@ -205,12 +251,16 @@ class EditConnectionTool(Tool):
     def mouseReleaseEvent(self, event):
         self.controller.scene.removeItem(self.preview_line)
 
-        end_port: Port = self.controller.scene.itemAt(
+        scene_item: Port = self.controller.scene.itemAt(
             event.scenePos(), QtGui.QTransform()
         )
 
-        if isinstance(end_port, Port) and end_port.canConnectTo(self._start_port):
-            self.controller.createConnection(self._start_port, end_port)
+        if isinstance(scene_item, (Port, Dot, Node)):
+            end_port = get_potential_port(
+                self._start_port, scene_item, event.scenePos()
+            )
+            if end_port.canConnectTo(self._start_port):
+                self.controller.createConnection(self._start_port, end_port)
 
         self.controller.clearTool()
         return True

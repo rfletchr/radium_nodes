@@ -1,5 +1,4 @@
 from PySide6 import QtCore, QtWidgets, QtGui, QtOpenGLWidgets
-import PySide6.QtGui
 from radium.nodegraph import util
 
 
