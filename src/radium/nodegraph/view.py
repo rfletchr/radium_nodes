@@ -84,7 +84,7 @@ class NodeGraphViewEventFilter(QtCore.QObject):
 
 
 if __name__ == "__main__":
-    from radium.nodegraph.scene import NodeGraphSceneController
+    from radium.nodegraph.controller import NodeGraphSceneController
     from radium.nodegraph.node import Node
 
     app = QtWidgets.QApplication([])

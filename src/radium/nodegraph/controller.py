@@ -1,5 +1,5 @@
 """
-A custom QGraphicsScene that handles the Node Graph and its interactions.
+A controller for handling node graph interactions. Each interaction is defined by a Tool e.g. Selection, Connection.
 
 # TODO: add a move tool with a modifier key for grid snapping.
 """
@@ -37,7 +37,7 @@ def get_nearby_port(node: Node, pos: QtCore.QPointF, port_type):
 
 
 def get_potential_port(
-    port: Port, item: typing.Union[Port, Dot, Node], event_pos: QtCore.QPointF
+        port: Port, item: typing.Union[Port, Dot, Node], event_pos: QtCore.QPointF
 ):
     """
     A utility function that tries to return a port from the given item.
@@ -223,10 +223,10 @@ class EditConnectionTool(Tool):
 
         # get the distance to the input and output ports
         distance_to_input = (
-            event.scenePos() - item.input_port.scenePos()
+                event.scenePos() - item.input_port.scenePos()
         ).manhattanLength()
         distance_to_output = (
-            event.scenePos() - item.output_port.scenePos()
+                event.scenePos() - item.output_port.scenePos()
         ).manhattanLength()
 
         # set the start port the the furthest port, conceptually your disconnecting
@@ -346,9 +346,9 @@ class ShiftDragCloneTool(Tool):
 
     def match(self, event, item):
         return (
-            event.button() == QtCore.Qt.MouseButton.LeftButton
-            and event.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier
-            and isinstance(item, Node)
+                event.button() == QtCore.Qt.MouseButton.LeftButton
+                and event.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier
+                and isinstance(item, Node)
         )
 
     def mousePressEvent(self, event, item):

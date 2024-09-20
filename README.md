@@ -18,7 +18,7 @@ e.g.
 """
 from PySide6 import QtWidgets
 from radium.nodegraph.view import NodeGraphView, NodeGraphViewEventFilter
-from radium.nodegraph.scene import NodeGraphSceneController
+from radium.nodegraph.controller import NodeGraphSceneController
 from radium.nodegraph.node import Node
 
 app = QtWidgets.QApplication([])
@@ -37,7 +37,6 @@ node2 = Node("Merge", ["image1", "image2"], ["image"])
 node2.setPos(0, 100)
 scene.addItem(node2)
 scene.setSceneRect(-1000, -1000, 2000, 2000)
-
 
 view = NodeGraphView()
 event_filter = NodeGraphViewEventFilter()
