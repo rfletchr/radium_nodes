@@ -1,9 +1,3 @@
-# Radium Nodes
-
-A no frills, vertical node-graph editor for PySide6.
-![img](img/nodes.png)
-
-```python
 """
 Shift-Drag nodes to duplicate them.
 Ctrl-Drag connections to add corners.
@@ -45,5 +39,3 @@ view.viewport().installEventFilter(event_filter)
 view.show()
 view.setScene(scene)
 app.exec()
-
-```
