@@ -13,7 +13,9 @@ class NodeGraphView(QtWidgets.QGraphicsView):
 
     def drawBackground(self, painter: QtGui.QPainter, rect: QtCore.QRectF) -> None:
         super().drawBackground(painter, rect)
-
+        painter.setPen(QtCore.Qt.PenStyle.NoPen)
+        painter.setBrush(self.palette().brush(self.palette().ColorRole.Window))
+        painter.drawRect(rect)
         # TODO: Theme Support
         util.draw_grid(painter, rect, 20)
 

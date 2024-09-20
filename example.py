@@ -1,4 +1,7 @@
 """
+Drag from ports to edges to make connections.
+Edit edges by dragging them (not their ports)
+
 Shift-Drag nodes to duplicate them.
 Ctrl-Drag connections to add corners.
 
@@ -11,9 +14,9 @@ e.g.
 
 """
 from PySide6 import QtWidgets
-from radium.nodegraph.view import NodeGraphView, NodeGraphViewEventFilter
-from radium.nodegraph.scene import NodeGraphSceneController
-from radium.nodegraph.node import Node
+from radium.nodegraph import NodeGraphView, NodeGraphViewEventFilter
+from radium.nodegraph import NodeGraphSceneController
+from radium.nodegraph import Node
 
 app = QtWidgets.QApplication([])
 scene = QtWidgets.QGraphicsScene()
