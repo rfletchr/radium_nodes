@@ -1,16 +1,29 @@
 """
-A controller for handling node graph interactions. Each interaction is defined by a Tool e.g. Selection, Connection.
+An event filter for handling node graph interactions. Each interaction is defined by a Tool e.g. Selection, Connection.
 
-# TODO: add a move tool with a modifier key for grid snapping.
 """
-import re
-import typing
-from PySide6 import QtCore, QtGui, QtWidgets
-from radium.nodegraph.node import Node
-from radium.nodegraph.dot import Dot
-from radium.nodegraph.port import InputPort, OutputPort, Port
 
-from radium.nodegraph.connection import Connection
+import typing
+import uuid
+
+from PySide6 import QtCore, QtGui, QtWidgets
+from radium.nodegraph.scene.node import Node
+from radium.nodegraph.scene.dot import Dot
+from radium.nodegraph.scene.connection import Connection
+from radium.nodegraph.scene.port import InputPort, OutputPort, Port
+from radium.nodegraph.scene import commands
+
+if typing.TYPE_CHECKING:
+    from radium.nodegraph.scene.scene import NodeGraphScene
+
+
+def sort_ports(a, b):
+    if isinstance(b, InputPort) and isinstance(a, OutputPort):
+        return a, b
+    elif isinstance(b, OutputPort) and isinstance(a, InputPort):
+        return b, a
+
+    raise TypeError(f"expected an input and an output port got: {a} & {b}")
 
 
 def get_nearby_port(node: Node, pos: QtCore.QPointF, port_type):
@@ -37,7 +50,7 @@ def get_nearby_port(node: Node, pos: QtCore.QPointF, port_type):
 
 
 def get_potential_port(
-        port: Port, item: typing.Union[Port, Dot, Node], event_pos: QtCore.QPointF
+    port: Port, item: typing.Union[Port, Dot, Node], event_pos: QtCore.QPointF
 ):
     """
     A utility function that tries to return a port from the given item.
@@ -63,7 +76,7 @@ def get_potential_port(
         else:
             return item.input
 
-    else:  # else its a Node
+    else:  # else it is a Node
         if isinstance(port, InputPort):
             return get_nearby_port(item, event_pos, OutputPort)
         else:
@@ -89,7 +102,7 @@ class PreviewRect(QtWidgets.QGraphicsRectItem):
 
 
 class Tool:
-    def __init__(self, controller: "NodeGraphSceneController"):
+    def __init__(self, controller: "SceneEventFilter"):
         self.controller = controller
 
     def match(self, event, item):
@@ -98,18 +111,27 @@ class Tool:
         """
         return False
 
-    def mousePressEvent(self, event: QtGui.QMouseEvent, item: QtWidgets.QGraphicsItem):
+    def mousePressEvent(
+        self,
+        event: QtWidgets.QGraphicsSceneMouseEvent,
+        item: QtWidgets.QGraphicsItem,
+    ):
         pass
 
-    def mouseMoveEvent(self, event: QtGui.QMouseEvent):
+    def mouseMoveEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent):
         pass
 
-    def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
+    def mouseReleaseEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent):
         pass
 
 
-class SelectionTool(Tool):
-    def __init__(self, controller: "NodeGraphSceneController"):
+class BoxSelectionTool(Tool):
+    """
+    Handles:
+        - dragging a box to select multiple nodegraph.
+    """
+
+    def __init__(self, controller: "SceneEventFilter"):
         super().__init__(controller)
         self.preview_rect = PreviewRect()
 
@@ -142,7 +164,7 @@ class SelectionTool(Tool):
 
         # select all items in rect
         for item in self.controller.scene.items(rect):
-            if item.flags() & QtWidgets.QGraphicsItem.ItemIsSelectable:
+            if item.flags() & QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsSelectable:
                 item.setSelected(True)
 
         self.controller.clearTool()
@@ -151,10 +173,11 @@ class SelectionTool(Tool):
 
 class ConnectionTool(Tool):
     """
-    Handles creation of connections between ports
+    Handles:
+        - dragging between 2 ports to make a connection.
     """
 
-    def __init__(self, controller: "NodeGraphSceneController"):
+    def __init__(self, controller: "SceneEventFilter"):
         super().__init__(controller)
         self.preview_line: PreviewLine = PreviewLine()
         self.start_port = None
@@ -195,7 +218,12 @@ class ConnectionTool(Tool):
         if isinstance(scene_item, (Port, Dot, Node)):
             end_port = get_potential_port(self.start_port, scene_item, event.scenePos())
             if end_port.canConnectTo(self.start_port):
-                self.controller.createConnection(self.start_port, end_port)
+                output_port, input_port = sort_ports(self.start_port, end_port)
+
+                cmd = commands.CreateConnectionCommand(
+                    self.controller.scene, output_port, input_port
+                )
+                self.controller.undo_stack.push(cmd)
 
         self.controller.clearTool()
         return True
@@ -203,10 +231,12 @@ class ConnectionTool(Tool):
 
 class EditConnectionTool(Tool):
     """
-    Handles editing of connections.
+    Handles:
+        - dragging a connection to disconnect it.
+        - dragging a connection to move it to another port.
     """
 
-    def __init__(self, controller: "NodeGraphSceneController"):
+    def __init__(self, controller: "SceneEventFilter"):
         super().__init__(controller)
         self._start_port = None
         self.preview_line = PreviewLine()
@@ -219,17 +249,20 @@ class EditConnectionTool(Tool):
         return left_mouse_clicked and is_connection and not ctrl_pressed
 
     def mousePressEvent(self, event, item: Connection):
-        self.controller.scene.removeItem(item)
+        self.controller.undo_stack.beginMacro("Edit Connection")
+        self.controller.undo_stack.push(
+            commands.RemoveItemCommand(self.controller.scene, item)
+        )
 
         # get the distance to the input and output ports
         distance_to_input = (
-                event.scenePos() - item.input_port.scenePos()
+            event.scenePos() - item.input_port.scenePos()
         ).manhattanLength()
         distance_to_output = (
-                event.scenePos() - item.output_port.scenePos()
+            event.scenePos() - item.output_port.scenePos()
         ).manhattanLength()
 
-        # set the start port the the furthest port, conceptually your disconnecting
+        # set the start port to the furthest port, conceptually your disconnecting
         # the closest port.
         if distance_to_input < distance_to_output:
             self._start_port = item.output_port
@@ -249,20 +282,29 @@ class EditConnectionTool(Tool):
         return True
 
     def mouseReleaseEvent(self, event):
-        self.controller.scene.removeItem(self.preview_line)
+        try:
+            self.controller.scene.removeItem(self.preview_line)
 
-        scene_item: Port = self.controller.scene.itemAt(
-            event.scenePos(), QtGui.QTransform()
-        )
-
-        if isinstance(scene_item, (Port, Dot, Node)):
-            end_port = get_potential_port(
-                self._start_port, scene_item, event.scenePos()
+            scene_item = self.controller.scene.itemAt(
+                event.scenePos(), QtGui.QTransform()
             )
-            if end_port.canConnectTo(self._start_port):
-                self.controller.createConnection(self._start_port, end_port)
 
-        self.controller.clearTool()
+            if isinstance(scene_item, (Port, Dot, Node)):
+                end_port = get_potential_port(
+                    self._start_port, scene_item, event.scenePos()
+                )
+
+                if end_port.canConnectTo(self._start_port):
+                    output_port, input_port = sort_ports(end_port, self._start_port)
+
+                    cmd = commands.CreateConnectionCommand(
+                        self.controller.scene, output_port, input_port
+                    )
+                    self.controller.undo_stack.push(cmd)
+
+            self.controller.undo_stack.endMacro()
+        finally:
+            self.controller.clearTool()
         return True
 
 
@@ -271,7 +313,7 @@ class InsertDotTool(Tool):
     Handles creation of dots
     """
 
-    def __init__(self, controller: "NodeGraphSceneController"):
+    def __init__(self, controller: "SceneEventFilter"):
         super().__init__(controller)
         self.line_1 = PreviewLine()
         self.line_2 = PreviewLine()
@@ -290,8 +332,10 @@ class InsertDotTool(Tool):
         - draw a preview line from the mouse position to the connections output
         - delete the connection
         """
+
         self.controller.scene.addItem(self.line_1)
         self.controller.scene.addItem(self.line_2)
+
         self.input_port = connection.input_port
         self.output_port = connection.output_port
 
@@ -300,7 +344,9 @@ class InsertDotTool(Tool):
             QtCore.QLineF(event.scenePos(), self.output_port.scenePos())
         )
 
-        connection.delete()
+        self.controller.undo_stack.beginMacro("Insert Dot")
+        cmd = commands.RemoveItemCommand(self.controller.scene, connection)
+        self.controller.undo_stack.push(cmd)
 
         return True
 
@@ -323,32 +369,41 @@ class InsertDotTool(Tool):
 
         dot = Dot()
         dot.setPos(event.scenePos())
-        self.controller.scene.addItem(dot)
-
-        self.controller.createConnection(dot.input, self.output_port)
-        self.controller.createConnection(self.input_port, dot.output)
-
+        self.controller.undo_stack.push(
+            commands.AddItemCommand(self.controller.scene, dot)
+        )
+        self.controller.undo_stack.push(
+            commands.CreateConnectionCommand(
+                self.controller.scene, self.output_port, dot.input
+            )
+        )
+        self.controller.undo_stack.push(
+            commands.CreateConnectionCommand(
+                self.controller.scene, dot.output, self.input_port
+            )
+        )
+        self.controller.undo_stack.endMacro()
         self.controller.clearTool()
         return True
 
 
-class ShiftDragCloneTool(Tool):
+class AltDragCloneTool(Tool):
     """
-    Handles cloning of nodes when shift dragging.
+    Handles cloning of nodegraph when shift dragging.
     """
 
-    def __init__(self, controller: "NodeGraphSceneController"):
+    def __init__(self, controller: "SceneEventFilter"):
         super().__init__(controller)
         self.preview_rect = PreviewRect()
         self.preview_rect.setBrush(QtGui.QColor(0, 0, 0, 64))
 
-        self.dragged_node: Node = None
+        self.dragged_node: typing.Optional[Node] = None
 
     def match(self, event, item):
         return (
-                event.button() == QtCore.Qt.MouseButton.LeftButton
-                and event.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier
-                and isinstance(item, Node)
+            event.button() == QtCore.Qt.MouseButton.LeftButton
+            and event.modifiers() & QtCore.Qt.KeyboardModifier.AltModifier
+            and isinstance(item, Node)
         )
 
     def mousePressEvent(self, event, item):
@@ -368,77 +423,96 @@ class ShiftDragCloneTool(Tool):
 
     def mouseReleaseEvent(self, event):
         """ """
-        new_node = self.controller.duplicateNode(self.dragged_node)
-        new_node.setPos(event.scenePos())
+        cmd = commands.CloneNodeCommand(
+            self.controller.scene, self.dragged_node, position=event.scenePos()
+        )
+        self.controller.undo_stack.push(cmd)
         self.dragged_node = None
         self.controller.scene.removeItem(self.preview_rect)
         self.controller.clearTool()
         return True
 
 
-class NodeGraphSceneController(QtCore.QObject):
-    def __init__(self, scene: QtWidgets.QGraphicsScene, tools=None, parent=None):
+class SelectAndMoveTool(Tool):
+    def __init__(self, controller: "SceneEventFilter"):
+        super().__init__(controller)
+        self.nodes: typing.Set[Node] = set()
+        self.drag_start: QtCore.QPointF = QtCore.QPointF(0, 0)
+        self.drag_id: typing.Optional[str] = None
+
+    def match(self, event, item):
+        return event.button() == QtGui.Qt.MouseButton.LeftButton and isinstance(
+            item, Node
+        )
+
+    def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent, item: Node):
+        self.drag_id = uuid.uuid4().hex
+
+        selected = {
+            n for n in item.scene().items() if isinstance(n, Node) and n.isSelected()
+        }
+
+        shift_pressed = event.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier
+
+        if shift_pressed:
+            self.nodes = selected
+            item.setSelected(True)
+            selected.add(item)
+        else:
+            for node in selected:
+                node.setSelected(False)
+            item.setSelected(True)
+            self.nodes = {item}
+
+        self.drag_start = event.scenePos()
+        return True
+
+    def mouseMoveEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent):
+        delta = event.scenePos() - self.drag_start
+        self.drag_start = event.scenePos()
+        cmd = commands.MoveNodesCommand(self.nodes, delta, self.drag_id)
+        self.controller.undo_stack.push(cmd)
+
+        return True
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
+        self.nodes = set()
+        self.drag_start = QtCore.QPointF(0, 0)
+        self.controller.clearTool()
+        return True
+
+
+class SceneEventFilter(QtCore.QObject):
+    """
+    An event filter that reacts to QGraphicsSceneEvent events.
+
+    Interactions are matched to a tool and then subsequent events are passed to that tool until it completes.
+
+    """
+
+    def __init__(
+        self, scene: "NodeGraphScene", undo_stack: QtGui.QUndoStack, parent=None
+    ):
         super().__init__(parent=parent)
         self.scene = scene
+        self.undo_stack = undo_stack
         self.scene.installEventFilter(self)
 
-        self.tools: typing.List[Tool] = tools or [
-            SelectionTool(self),
+        self.tools: typing.List[Tool] = [
+            BoxSelectionTool(self),
             ConnectionTool(self),
             InsertDotTool(self),
             EditConnectionTool(self),
-            ShiftDragCloneTool(self),
+            AltDragCloneTool(self),
+            SelectAndMoveTool(self),
         ]
 
-        self._tool: Tool = None
-
-    def createNode(self, name, inputs, outputs):
-        node = Node(name, inputs, outputs)
-        self.scene.addItem(node)
-        return node
-
-    def createDot(self, position=None):
-        dot = Dot()
-        self.scene.addItem(dot)
-
-        if position is not None:
-            dot.setPos(position)
-
-        return dot
-
-    def createConnection(self, port_a: Port, port_b: Port):
-        input_port = port_a if isinstance(port_a, InputPort) else port_b
-        output_port = port_a if isinstance(port_a, OutputPort) else port_b
-        connection = Connection(input_port, output_port)
-        self.scene.addItem(connection)
-
-    def duplicateNode(self, node: Node):
-        new_name = self.uniqueNodeName(node.name())
-        new_node = Node(new_name, node.inputs.keys(), node.outputs.keys())
-        new_node.setPos(node.pos() + QtCore.QPointF(10, 10))
-        self.scene.addItem(new_node)
-        return new_node
-
-    def uniqueNodeName(self, name):
-        existing_names = [
-            item.name() for item in self.scene.items() if isinstance(item, Node)
-        ]
-        if name not in existing_names:
-            return name
-
-        name_without_suffix = re.sub(r"(_)?\d+$", "", name)
-
-        i = 1
-        while True:
-            new_name = f"{name_without_suffix}_{i:02d}"
-            if new_name not in existing_names:
-                return new_name
-            i += 1
+        self._tool: typing.Optional[Tool] = None
 
     def clearTool(self):
         self._tool = None
 
-    def eventFilter(self, scene, event):
+    def eventFilter(self, scene, event: QtWidgets.QGraphicsSceneMouseEvent):
         if scene is not self.scene:
             return False
 
