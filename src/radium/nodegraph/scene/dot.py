@@ -1,10 +1,10 @@
 """
-A dot is a NoOp node that can be used to aid in the layout of a node graph
-by adding corners to graph connections.
+A dot is a NoOp node that can be used to aid in the layout of a node nodegraph
+by adding corners to nodegraph connections.
 """
 
 from PySide6 import QtCore, QtGui, QtWidgets
-from radium.nodegraph.port import InputPort, OutputPort
+from radium.nodegraph.scene.port import InputPort, OutputPort
 
 
 class DotInputPort(InputPort):
@@ -13,7 +13,7 @@ class DotInputPort(InputPort):
     """
 
     def __init__(self, name, parent=None):
-        super().__init__(name, parent=parent)
+        super().__init__(name, "*", parent=parent)
         self.setBrush(QtGui.QColor(0, 0, 0, 32))
         self.setPen(QtCore.Qt.PenStyle.NoPen)
         path = QtGui.QPainterPath()
@@ -27,7 +27,7 @@ class DotOutputPort(OutputPort):
     """
 
     def __init__(self, name, parent=None):
-        super().__init__(name, parent=parent)
+        super().__init__(name, "*", parent=parent)
         self.setBrush(QtGui.QColor(0, 0, 0, 32))
         self.setPen(QtCore.Qt.PenStyle.NoPen)
         path = QtGui.QPainterPath()
