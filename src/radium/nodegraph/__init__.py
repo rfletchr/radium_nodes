@@ -1,2 +1,2 @@
-from .scene import *
-from .view import *
+from .graph import *
+from radium.nodegraph.graph.view import *

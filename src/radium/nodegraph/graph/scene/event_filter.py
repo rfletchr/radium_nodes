@@ -7,14 +7,14 @@ import typing
 import uuid
 
 from PySide6 import QtCore, QtGui, QtWidgets
-from radium.nodegraph.scene.node import Node
-from radium.nodegraph.scene.dot import Dot
-from radium.nodegraph.scene.connection import Connection
-from radium.nodegraph.scene.port import InputPort, OutputPort, Port
-from radium.nodegraph.scene import commands
+from radium.nodegraph.graph.scene import commands
+from radium.nodegraph.graph.scene.node import Node
+from radium.nodegraph.graph.scene.dot import Dot
+from radium.nodegraph.graph.scene.connection import Connection
+from radium.nodegraph.graph.scene.port import InputPort, OutputPort, Port
 
 if typing.TYPE_CHECKING:
-    from radium.nodegraph.scene.scene import NodeGraphScene
+    from radium.nodegraph.graph.scene import NodeGraphScene
 
 
 def sort_ports(a, b):
@@ -31,9 +31,9 @@ def get_nearby_port(node: Node, pos: QtCore.QPointF, port_type):
     Returns the port closest to the given position.
     """
     if issubclass(port_type, InputPort):
-        ports = node.inputs.values()
+        ports = node.inputs().values()
     elif issubclass(port_type, OutputPort):
-        ports = node.outputs.values()
+        ports = node.outputs().values()
     else:
         raise TypeError("port_type must be subclass of InputPort, OutputPort")
 

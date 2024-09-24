@@ -22,6 +22,7 @@ class NodeSearchBox(QtWidgets.QWidget):
 
         self.search.textChanged.connect(self.onTextChanged)
         self.list_view.doubleClicked.connect(self.onItemClicked)
+        self.list_view.clicked.connect(self.onItemClicked)
 
     def onTextChanged(self, text):
         self.proxy_model.setQuery(text)
@@ -67,16 +68,25 @@ class FuzzySortProxyModel(QtCore.QSortFilterProxyModel):
         return False
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QtWidgets.QApplication()
-    model = QtGui.QStandardItemModel()
-    model.appendRow(QtGui.QStandardItem('Merge'))
-    model.appendRow(QtGui.QStandardItem('MergeImage'))
-    model.appendRow(QtGui.QStandardItem('MergeFloat'))
-    model.appendRow(QtGui.QStandardItem('Constant'))
-    model.appendRow(QtGui.QStandardItem('Blur'))
-    view = NodeSearchBox()
-    view.itemSelected.connect(lambda index: print(index.data(QtCore.Qt.ItemDataRole.DisplayRole)))
-    view.setModel(model)
-    view.show()
+    # model = QtGui.QStandardItemModel()
+    #
+    # for name in ["Merge", "MergeImage", "MergeFloat", "Constant", "Blur"]:
+    #     item = QtGui.QStandardItem(name)
+    #     item.setEditable(False)
+    #     model.appendRow(item)
+    #
+    # view = NodeSearchBox()
+    # view.itemSelected.connect(
+    #     lambda index: print(index.data(QtCore.Qt.ItemDataRole.DisplayRole))
+    # )
+    # view.setModel(model)
+    #
+    # view.show()
+    menu = QtWidgets.QMenu()
+
+    menu.addAction("Bork")
+    menu.show()
+
     app.exec()

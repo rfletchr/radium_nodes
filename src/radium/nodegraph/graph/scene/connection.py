@@ -7,8 +7,8 @@ import typing
 from PySide6 import QtGui, QtWidgets
 
 if typing.TYPE_CHECKING:
-    from radium.nodegraph.scene.port import InputPort, OutputPort
-    from radium.nodegraph.scene.node import Node
+    from radium.nodegraph.graph.scene.port import InputPort, OutputPort
+    from radium.nodegraph.graph.scene.node import Node
 
 
 class Connection(QtWidgets.QGraphicsPathItem):
@@ -58,9 +58,9 @@ class Connection(QtWidgets.QGraphicsPathItem):
 
     def toDict(self):
         return {
-            "output_node": self.output_port.node().unique_id(),
+            "output_node": self.output_port.node().uniqueId(),
             "output_port": self.output_port.name(),
-            "input_node": self.input_port.node().unique_id(),
+            "input_node": self.input_port.node().uniqueId(),
             "input_port": self.input_port.name(),
         }
 

@@ -5,58 +5,54 @@ A GraphicsItem that represents a node in a node nodegraph.
 import typing
 import uuid
 
-from PySide6 import QtCore, QtGui, QtWidgets, QtSvg
-from radium.nodegraph.scene.port import InputPort, OutputPort, Port
+from PySide6 import QtCore, QtGui, QtWidgets
+from radium.nodegraph.graph.scene.port import InputPort, OutputPort
 
 if typing.TYPE_CHECKING:
-    from radium.nodegraph.scene.prototypes import NodePrototype
+    from radium.nodegraph.graph.scene.prototypes import NodePrototype
 
 
 class Node(QtWidgets.QGraphicsRectItem):
     @classmethod
-    def from_prototype(cls, prototype: "NodePrototype"):
+    def fromPrototype(cls, prototype: "NodePrototype"):
         node = cls(prototype.node_type)
-        for port in prototype.inputs:
-            node.addInput(port.name, port.datatype)
+        for port_prototype in prototype.inputs:
+            node.addPort(InputPort.fromPrototype(port_prototype))
 
-        for port in prototype.outputs:
-            node.addOutput(port.name, port.datatype)
+        for port_prototype in prototype.outputs:
+            node.addPort(OutputPort.fromPrototype(port_prototype))
 
         return node
 
     @classmethod
-    def from_node(cls, node: "Node") -> "Node":
-        instance = cls(node.name())
-        for port in node.inputs.values():
-            instance.addInput(port.name(), port.datatype())
-
-        for port in node.outputs.values():
-            instance.addOutput(port.name(), port.datatype())
-
-        return instance
+    def fromNode(cls, node: "Node") -> "Node":
+        data = node.toDict()
+        return cls.fromDict(data)
 
     def toDict(self):
         return {
-            "type": self.type(),
+            "type": self.nodeType(),
             "name": self.name(),
             "position": [self.pos().x(), self.pos().y()],
-            "unique_id": self.unique_id(),
-            "inputs": [i.toDict() for i in self.inputs.values()],
-            "outputs": [o.toDict() for o in self.outputs.values()],
+            "unique_id": self.uniqueId(),
+            "inputs": [i.toDict() for i in self.inputs().values()],
+            "outputs": [o.toDict() for o in self.outputs().values()],
         }
 
     @classmethod
     def fromDict(cls, node_dict):
-        instance = cls(node_dict["type"], name=node_dict["name"], unique_id=node_dict["unique_id"])
+        instance = cls(
+            node_dict["type"], name=node_dict["name"], unique_id=node_dict["unique_id"]
+        )
 
         pos = QtCore.QPointF(node_dict["position"][0], node_dict["position"][1])
         instance.setPos(pos)
 
         for input_data in node_dict["inputs"]:
-            instance.addInput(input_data["name"], input_data["datatype"])
+            instance.addPort(InputPort.fromDict(input_data))
 
         for output_data in node_dict["outputs"]:
-            instance.addOutput(output_data["name"], output_data["datatype"])
+            instance.addPort(OutputPort.fromDict(output_data))
 
         return instance
 
@@ -66,8 +62,8 @@ class Node(QtWidgets.QGraphicsRectItem):
         self.setFlag(self.GraphicsItemFlag.ItemIsSelectable)
         self.setFlag(self.GraphicsItemFlag.ItemSendsScenePositionChanges, True)
 
-        self.inputs: typing.Dict[str, InputPort] = {}
-        self.outputs: typing.Dict[str, OutputPort] = {}
+        self.__inputs: typing.Dict[str, InputPort] = {}
+        self.__outputs: typing.Dict[str, OutputPort] = {}
 
         self.__unique_id = unique_id or uuid.uuid4().hex
         self.__type = type_name
@@ -83,13 +79,19 @@ class Node(QtWidgets.QGraphicsRectItem):
         self.__rect = QtCore.QRectF()
         self.setName(self.__label)
 
-    def unique_id(self):
+    def inputs(self):
+        return self.__inputs.copy()
+
+    def outputs(self):
+        return self.__outputs.copy()
+
+    def uniqueId(self):
         return self.__unique_id
 
     def name(self):
         return self.__label
 
-    def type(self):
+    def nodeType(self):
         return self.__type
 
     def setName(self, value, layout=True):
@@ -103,10 +105,10 @@ class Node(QtWidgets.QGraphicsRectItem):
         self.__dirty = True
 
     def paint(
-            self,
-            painter: QtGui.QPainter,
-            option: QtWidgets.QStyleOptionGraphicsItem,
-            widget=None,
+        self,
+        painter: QtGui.QPainter,
+        option: QtWidgets.QStyleOptionGraphicsItem,
+        widget=None,
     ):
         self.layout()
 
@@ -140,10 +142,10 @@ class Node(QtWidgets.QGraphicsRectItem):
         self.__rect = rect
 
         self.__layoutPorts(
-            self.inputs.values(), rect.top(), QtCore.Qt.AlignmentFlag.AlignTop
+            self.__inputs.values(), rect.top(), QtCore.Qt.AlignmentFlag.AlignTop
         )
         self.__layoutPorts(
-            self.outputs.values(), rect.bottom(), QtCore.Qt.AlignmentFlag.AlignBottom
+            self.__outputs.values(), rect.bottom(), QtCore.Qt.AlignmentFlag.AlignBottom
         )
         self.__dirty = False
 
@@ -157,10 +159,10 @@ class Node(QtWidgets.QGraphicsRectItem):
 
     @staticmethod
     def __layoutPorts(
-            ports,
-            start_y,
-            alignment: QtCore.Qt.AlignmentFlag,
-            spacing=10,
+        ports,
+        start_y,
+        alignment: QtCore.Qt.AlignmentFlag,
+        spacing=10,
     ):
         ports = list(ports)
         width = sum(p.boundingRect().width() + spacing for p in ports) - spacing
@@ -172,16 +174,17 @@ class Node(QtWidgets.QGraphicsRectItem):
             port.setPos(x + port.boundingRect().width() * 0.5, y)
             x += port.boundingRect().width() + spacing
 
-    # TODO: make inputs/outputs functions and allow adding port instances.
-    def addInput(self, name, datatype):
-        port = InputPort(name, datatype, self)
-        self.inputs[name] = port
-        self.__dirty = True
-        return port
+    def addPort(self, port: typing.Union[InputPort, OutputPort]):
+        if isinstance(port, InputPort):
+            store = self.__inputs
+        elif isinstance(port, OutputPort):
+            store = self.__outputs
+        else:
+            raise TypeError(f"Unknown input/output port type: {port}")
 
-    def addOutput(self, name, datatype):
-        port = OutputPort(name, datatype, self)
-        self.outputs[name] = port
-        self.__dirty = True
+        if port.name() in store:
+            raise ValueError(f"Port {port.name()} already exists")
 
-        return port
+        store[port.name()] = port
+        port.setParentItem(self)
+        self.__dirty = True

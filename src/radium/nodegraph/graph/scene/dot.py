@@ -4,7 +4,7 @@ by adding corners to nodegraph connections.
 """
 
 from PySide6 import QtCore, QtGui, QtWidgets
-from radium.nodegraph.scene.port import InputPort, OutputPort
+from radium.nodegraph.graph.scene.port import InputPort, OutputPort
 
 
 class DotInputPort(InputPort):
@@ -18,7 +18,6 @@ class DotInputPort(InputPort):
         self.setPen(QtCore.Qt.PenStyle.NoPen)
         self.setRect(-10, -10, 20, 10)
         self.setZValue(-1)
-
 
 
 class DotOutputPort(OutputPort):
@@ -36,7 +35,7 @@ class DotOutputPort(OutputPort):
 
 class Dot(QtWidgets.QGraphicsEllipseItem):
     """
-    A Dot node is a NoOp node used for scene layout.
+    A Dot node is a NoOp node used for graph layout.
     """
 
     def __init__(self, parent=None):

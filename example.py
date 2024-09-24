@@ -73,4 +73,3 @@ controller.registerPrototype(merge_prototype)
 controller.registerPrototype(constant_prototype)
 
 app.exec()
-

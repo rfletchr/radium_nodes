@@ -1,44 +1,35 @@
 import typing
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui
 
-from radium.nodegraph.scene.node import Node
-from radium.nodegraph.scene import SceneEventFilter
-from radium.nodegraph.scene.backdrop import Backdrop
-from radium.nodegraph.scene.scene import NodeGraphScene
-from radium.nodegraph.scene.port import InputPort, OutputPort
-from radium.nodegraph.scene.connection import Connection
-from radium.nodegraph.scene.prototypes import NodePrototype
-from radium.nodegraph.scene import commands
+from radium.nodegraph.graph.scene.node import Node
+from radium.nodegraph.graph.scene.event_filter import SceneEventFilter
+from radium.nodegraph.graph.scene.backdrop import Backdrop
+from radium.nodegraph.graph.scene import NodeGraphScene, commands
+from radium.nodegraph.graph.scene.port import InputPort, OutputPort
+from radium.nodegraph.graph.scene.connection import Connection
+from radium.nodegraph.graph.scene.prototypes import NodePrototype
 
 if typing.TYPE_CHECKING:
-    from radium.nodegraph.view import NodeGraphView
+    from radium.nodegraph.graph.view import NodeGraphView
 
 
 class NodeGraphController(QtCore.QObject):
-    def __init__(self, parent=None):
+    prototypeRegistered = QtCore.Signal(NodePrototype)
+
+    def __init__(self, undo_stack: QtGui.QUndoStack = None, parent=None):
         super().__init__(parent)
         self.scene = NodeGraphScene()
-        self.undo_stack = QtGui.QUndoStack()
+        self.undo_stack = undo_stack or QtGui.QUndoStack()
         self.scene_event_filter = SceneEventFilter(self.scene, self.undo_stack)
         self.__prototypes = {}
-        self.nodes_model = QtGui.QStandardItemModel()
 
     def attachView(self, view: "NodeGraphView"):
-        view.createNodeRequested.connect(self.onNodeCreationRequested)
-        view.setNodesModel(self.nodes_model)
         view.setScene(self.scene)
-
-    def onNodeCreationRequested(self, index: QtCore.QModelIndex, position: QtCore.QPointF):
-        prototype = index.data(QtCore.Qt.ItemDataRole.UserRole)
-        node = self.createNode(prototype.node_type)
-        node.setPos(position)
+        view.createNodeRequested.connect(self.onNodeCreationRequested)
 
     def registerPrototype(self, prototype: NodePrototype):
         self.__prototypes[prototype.node_type] = prototype
-        item = QtGui.QStandardItem(prototype.node_type)
-        item.setEditable(False)
-        item.setData(prototype, QtCore.Qt.ItemDataRole.UserRole)
-        self.nodes_model.appendRow(item)
+        self.prototypeRegistered.emit(prototype)
 
     def createNode(self, node_type) -> Node:
         prototype = self.__prototypes[node_type]
@@ -62,7 +53,7 @@ class NodeGraphController(QtCore.QObject):
         return [n for n in self.scene.selectedItems() if isinstance(n, Node)]
 
     def createConnection(
-            self, output_port: OutputPort, input_port: InputPort
+        self, output_port: OutputPort, input_port: InputPort
     ) -> Connection:
         if not isinstance(output_port, OutputPort):
             raise TypeError(f"Not an output port: {output_port}")
@@ -74,3 +65,7 @@ class NodeGraphController(QtCore.QObject):
         self.undo_stack.push(cmd)
         return cmd.connection
 
+    @QtCore.Slot(str, QtCore.QPointF)
+    def onNodeCreationRequested(self, node_type: str, position: QtCore.QPointF):
+        node = self.createNode(node_type)
+        node.setPos(position)
