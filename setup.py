@@ -1,5 +1,3 @@
-from importlib.metadata import entry_points
-
 from setuptools import setup, find_namespace_packages
 
 

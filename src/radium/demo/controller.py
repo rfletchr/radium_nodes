@@ -7,8 +7,9 @@ import qtawesome as qta
 from PySide6 import QtWidgets, QtGui, QtCore
 from radium.nodegraph.graph import NodeGraphController
 from radium.nodegraph.graph.view import NodeGraphView
-from radium.nodegraph.browser import NodeBrowserController, NodeBrowserView
-from radium.nodegraph.graph.scene import prototypes
+from radium.nodegraph.browser import NodeBrowserView
+from radium.nodegraph.node_types import prototypes
+from radium.nodegraph.node_types import NodeFactory
 
 
 class MainController(QtCore.QObject):
@@ -22,17 +23,16 @@ class MainController(QtCore.QObject):
         self.__dirty = False
         self.settings = QtCore.QSettings("radium", "nodegraph.demo")
         self.undo_stack = QtGui.QUndoStack()
+        self.node_registry = NodeFactory()
 
         self.node_graph_view = NodeGraphView()
-        self.node_graph_controller = NodeGraphController(undo_stack=self.undo_stack)
+        self.node_graph_controller = NodeGraphController(
+            undo_stack=self.undo_stack, node_registry=self.node_registry
+        )
         self.node_graph_controller.attachView(self.node_graph_view)
 
         self.node_browser_view = NodeBrowserView()
-        self.node_browser_controller = NodeBrowserController()
-        self.node_browser_controller.attachView(self.node_browser_view)
-        self.node_graph_controller.prototypeRegistered.connect(
-            self.node_browser_controller.addPrototype
-        )
+        self.node_browser_view.setModel(self.node_registry.node_types_model)
 
         self.central_widget = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         self.central_widget.addWidget(self.node_browser_view)
@@ -62,7 +62,7 @@ class MainController(QtCore.QObject):
         Register some basic example nodes. Nodes prototypes must be registered
         before they can be created.
         """
-        self.node_graph_controller.registerPrototype(
+        self.node_registry.register(
             prototypes.NodePrototype(
                 "Merge",
                 inputs=(
@@ -73,7 +73,7 @@ class MainController(QtCore.QObject):
                 parameters=tuple(),
             )
         )
-        self.node_graph_controller.registerPrototype(
+        self.node_registry.register(
             prototypes.NodePrototype(
                 "Constant",
                 inputs=tuple(),
@@ -83,7 +83,7 @@ class MainController(QtCore.QObject):
             )
         )
 
-        self.node_graph_controller.registerPrototype(
+        self.node_registry.register(
             prototypes.NodePrototype(
                 "LoadImage",
                 inputs=tuple(),

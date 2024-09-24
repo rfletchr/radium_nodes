@@ -5,7 +5,7 @@ A GraphicsItem that represents a port on a node. A port represents a named input
 import sys
 import uuid
 from PySide6 import QtGui, QtWidgets
-from radium.nodegraph.graph.scene.prototypes import PortPrototype
+from radium.nodegraph.node_types.prototypes import PortPrototype
 
 
 class Port(QtWidgets.QGraphicsRectItem):

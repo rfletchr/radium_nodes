@@ -9,7 +9,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from radium.nodegraph.graph.scene.port import InputPort, OutputPort
 
 if typing.TYPE_CHECKING:
-    from radium.nodegraph.graph.scene.prototypes import NodePrototype
+    from radium.nodegraph.node_types.prototypes import NodePrototype
 
 
 class Node(QtWidgets.QGraphicsRectItem):

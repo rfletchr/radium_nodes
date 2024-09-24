@@ -4,7 +4,7 @@ import typing
 from PySide6 import QtGui, QtCore, QtWidgets
 
 from radium.nodegraph import constants
-from radium.nodegraph.graph.scene.prototypes import NodePrototype
+from radium.nodegraph.node_types.prototypes import NodePrototype
 
 
 def iter_categories(node_type_name: str):
@@ -51,6 +51,13 @@ class NodePrototypeModel(QtGui.QStandardItemModel):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.__category_items = {}
+        self.__item_lookup = {}
+
+    def removePrototype(self, name):
+        item = self.__item_lookup.pop(name, None)
+        if item:
+            index = self.indexFromItem(item)
+            self.removeRow(index.row(), parent=index.parent())
 
     def addPrototype(self, prototype: NodePrototype):
         parent = self.invisibleRootItem()
@@ -64,6 +71,7 @@ class NodePrototypeModel(QtGui.QStandardItemModel):
                 parent = self.__category_items[category]
 
         item = NodePrototypeItem(prototype)
+        self.__category_items[prototype.node_type] = item
         parent.appendRow(item)
 
     def mimeTypes(self):

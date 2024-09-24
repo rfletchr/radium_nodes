@@ -30,6 +30,7 @@ main()
 - [X] Serialization.
 - [X] Node Browser.
 - [ ] Node Parameters.
+- [ ] Node Groups & Gizmos
 - [ ] Documentation
 
 ### Nice to have
