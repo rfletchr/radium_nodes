@@ -14,11 +14,11 @@ class DotInputPort(InputPort):
 
     def __init__(self, name, parent=None):
         super().__init__(name, "*", parent=parent)
-        self.setBrush(QtGui.QColor(0, 0, 0, 32))
+        self.setBrush(QtGui.QColor(127, 0, 0, 32))
         self.setPen(QtCore.Qt.PenStyle.NoPen)
-        path = QtGui.QPainterPath()
-        path.addRect(-10, -10, 20, 10)
-        self.setPath(path)
+        self.setRect(-10, -10, 20, 10)
+        self.setZValue(-1)
+
 
 
 class DotOutputPort(OutputPort):
@@ -30,9 +30,8 @@ class DotOutputPort(OutputPort):
         super().__init__(name, "*", parent=parent)
         self.setBrush(QtGui.QColor(0, 0, 0, 32))
         self.setPen(QtCore.Qt.PenStyle.NoPen)
-        path = QtGui.QPainterPath()
-        path.addRect(-10, 0, 20, 10)
-        self.setPath(path)
+        self.setRect(-10, 0, 20, 10)
+        self.setZValue(-1)
 
 
 class Dot(QtWidgets.QGraphicsEllipseItem):

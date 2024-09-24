@@ -8,6 +8,7 @@ setup(
     packages=find_namespace_packages(where='src'),
     package_dir={'': 'src'},
     install_requires=[
-        'PySide6'
+        'PySide6',
+        "rapidfuzz"
     ]
 )

@@ -3,6 +3,8 @@
 A no frills, vertical node-graph editor for PySide6.
 ![img](img/example.png)
 
+
+## Example
 ```python
 """
 Drag from ports to edges to make connections.
@@ -48,3 +50,14 @@ controller.createBackdrop("Backdrop")
 
 app.exec()
 ```
+
+## TO DO
+### Essential
+- [X] Undo/Redo.
+- [X] Serialization.
+- [ ] Node Browser.
+- [ ] Node Parameters.
+
+### Nice to have
+- [ ] Custom Node Drawing.
+- [ ] Custom Port Drawing.

@@ -6,13 +6,13 @@ import typing
 import uuid
 
 from PySide6 import QtCore, QtGui, QtWidgets, QtSvg
-from radium.nodegraph.scene.port import InputPort, OutputPort
+from radium.nodegraph.scene.port import InputPort, OutputPort, Port
 
 if typing.TYPE_CHECKING:
     from radium.nodegraph.scene.prototypes import NodePrototype
 
 
-class Node(QtWidgets.QGraphicsPathItem):
+class Node(QtWidgets.QGraphicsRectItem):
     @classmethod
     def from_prototype(cls, prototype: "NodePrototype"):
         node = cls(prototype.node_type)
@@ -28,14 +28,39 @@ class Node(QtWidgets.QGraphicsPathItem):
     def from_node(cls, node: "Node") -> "Node":
         instance = cls(node.name())
         for port in node.inputs.values():
-            instance.addInput(port.name, port.datatype)
+            instance.addInput(port.name(), port.datatype())
 
         for port in node.outputs.values():
-            instance.addOutput(port.name, port.datatype)
+            instance.addOutput(port.name(), port.datatype())
 
         return instance
 
-    def __init__(self, label: str, unique_id=None, parent=None):
+    def toDict(self):
+        return {
+            "type": self.type(),
+            "name": self.name(),
+            "position": [self.pos().x(), self.pos().y()],
+            "unique_id": self.unique_id(),
+            "inputs": [i.toDict() for i in self.inputs.values()],
+            "outputs": [o.toDict() for o in self.outputs.values()],
+        }
+
+    @classmethod
+    def fromDict(cls, node_dict):
+        instance = cls(node_dict["type"], name=node_dict["name"], unique_id=node_dict["unique_id"])
+
+        pos = QtCore.QPointF(node_dict["position"][0], node_dict["position"][1])
+        instance.setPos(pos)
+
+        for input_data in node_dict["inputs"]:
+            instance.addInput(input_data["name"], input_data["datatype"])
+
+        for output_data in node_dict["outputs"]:
+            instance.addOutput(output_data["name"], output_data["datatype"])
+
+        return instance
+
+    def __init__(self, type_name: str, name: str = None, unique_id=None, parent=None):
         super().__init__(parent)
         self.setFlag(self.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(self.GraphicsItemFlag.ItemIsSelectable)
@@ -45,7 +70,8 @@ class Node(QtWidgets.QGraphicsPathItem):
         self.outputs: typing.Dict[str, OutputPort] = {}
 
         self.__unique_id = unique_id or uuid.uuid4().hex
-        self.__label = label
+        self.__type = type_name
+        self.__label = name or type_name
         self._font = QtGui.QFont("Consolas", 10)
         self._font_metrics = QtGui.QFontMetrics(self._font)
         self._name_rect = QtCore.QRectF()
@@ -54,13 +80,17 @@ class Node(QtWidgets.QGraphicsPathItem):
         self.setBrush(QtGui.QColor(60, 60, 60))
         self.palette = QtGui.QPalette()
         self.__dirty = False
-        self.setName(label)
+        self.__rect = QtCore.QRectF()
+        self.setName(self.__label)
 
     def unique_id(self):
         return self.__unique_id
 
     def name(self):
         return self.__label
+
+    def type(self):
+        return self.__type
 
     def setName(self, value, layout=True):
         rect = QtCore.QRectF(self._font_metrics.boundingRect(value))
@@ -73,18 +103,16 @@ class Node(QtWidgets.QGraphicsPathItem):
         self.__dirty = True
 
     def paint(
-        self,
-        painter: QtGui.QPainter,
-        option: QtWidgets.QStyleOptionGraphicsItem,
-        widget=None,
+            self,
+            painter: QtGui.QPainter,
+            option: QtWidgets.QStyleOptionGraphicsItem,
+            widget=None,
     ):
         self.layout()
 
-        path = self.path()
-
         color = self.palette.color(self.palette.ColorRole.Light)
-
-        painter.fillPath(path, color)
+        painter.setBrush(color)
+        painter.drawRoundedRect(self.boundingRect(), 10, 10)
 
         if self.isSelected():
             color_role = self.palette.ColorRole.Highlight
@@ -92,8 +120,11 @@ class Node(QtWidgets.QGraphicsPathItem):
             color_role = self.palette.ColorRole.Dark
 
         pen = QtGui.QPen(self.palette.color(color_role), 2)
-        painter.strokePath(path, pen)
+        painter.setPen(pen)
+        painter.drawRoundedRect(self.boundingRect(), 10, 10)
 
+        pen = self.palette.color(self.palette.ColorRole.Text)
+        painter.setPen(pen)
         painter.setFont(self._font)
         painter.drawText(self._name_rect, self.__label)
 
@@ -101,30 +132,35 @@ class Node(QtWidgets.QGraphicsPathItem):
         if not self.__dirty:
             return
 
-        rect = self._name_rect.adjusted(-5, -5, 5, 5)
-        rect.setHeight(rect.width())
+        rect = self._name_rect.adjusted(-5, 0, 5, 0)
+        rect.setHeight(rect.height() * 3)
+        rect.setWidth(rect.width() * 1.5)
 
-        rect.setWidth(max(rect.width(), 100))
         rect.moveCenter(QtCore.QPointF(0, 0))
+        self.__rect = rect
 
-        path = QtGui.QPainterPath()
-
-        path.addRect(rect)
-        self.setPath(path)
         self.__layoutPorts(
-            self.inputs.values(), rect.top(), QtCore.Qt.AlignmentFlag.AlignBottom
+            self.inputs.values(), rect.top(), QtCore.Qt.AlignmentFlag.AlignTop
         )
         self.__layoutPorts(
-            self.outputs.values(), rect.bottom(), QtCore.Qt.AlignmentFlag.AlignTop
+            self.outputs.values(), rect.bottom(), QtCore.Qt.AlignmentFlag.AlignBottom
         )
         self.__dirty = False
 
+    def boundingRect(self):
+        return QtCore.QRectF(self.__rect)
+
+    def shape(self):
+        path = QtGui.QPainterPath()
+        path.addRect(self.__rect)
+        return path
+
     @staticmethod
     def __layoutPorts(
-        ports,
-        start_y,
-        alignment: QtCore.Qt.AlignmentFlag,
-        spacing=10,
+            ports,
+            start_y,
+            alignment: QtCore.Qt.AlignmentFlag,
+            spacing=10,
     ):
         ports = list(ports)
         width = sum(p.boundingRect().width() + spacing for p in ports) - spacing
@@ -133,15 +169,10 @@ class Node(QtWidgets.QGraphicsPathItem):
 
         for port in ports:
             y = start_y
-
-            if alignment & QtCore.Qt.AlignmentFlag.AlignBottom:
-                y -= port.boundingRect().height() * 0.5
-            elif alignment & QtCore.Qt.AlignmentFlag.AlignTop:
-                y += port.boundingRect().height() * 0.5
-
             port.setPos(x + port.boundingRect().width() * 0.5, y)
             x += port.boundingRect().width() + spacing
 
+    # TODO: make inputs/outputs functions and allow adding port instances.
     def addInput(self, name, datatype):
         port = InputPort(name, datatype, self)
         self.inputs[name] = port
