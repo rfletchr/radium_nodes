@@ -9,6 +9,6 @@ setup(
     description="A no frills node-based editor for python / PySide6",
     packages=find_namespace_packages(where="src"),
     package_dir={"": "src"},
-    install_requires=["PySide6", "rapidfuzz", "qtawesome"],
+    install_requires=["PySide6", "qtawesome"],
     entry_points={"console_scripts": ["radium-demo=radium.demo.__main__:main"]},
 )
