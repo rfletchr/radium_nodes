@@ -1,7 +1,31 @@
 from PySide6 import QtCore, QtGui
+from radium.nodegraph import constants
 
 
-class NodeGraphViewEventFilter(QtCore.QObject):
+class DragDropEventFilter(QtCore.QObject):
+    nodeTypeDropped = QtCore.Signal(str)
+
+    def eventFilter(self, obj, event: QtCore.QEvent):
+        if isinstance(event, QtGui.QDragEnterEvent):
+            if event.mimeData().hasFormat(constants.NODE_TYPE_MIME_TYPE):
+                event.accept()
+                return True
+
+        elif isinstance(event, QtGui.QDragMoveEvent):
+            if event.mimeData().hasFormat(constants.NODE_TYPE_MIME_TYPE):
+                event.accept()
+                return True
+
+        elif isinstance(event, QtGui.QDropEvent):
+            if event.mimeData().hasFormat(constants.NODE_TYPE_MIME_TYPE):
+                mime_data = event.mimeData()
+                raw_data = mime_data.data(constants.NODE_TYPE_MIME_TYPE)
+                self.nodeTypeDropped.emit(raw_data.toStdString())
+
+        return False
+
+
+class NavigationEventFilter(QtCore.QObject):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self._mouse_down_pos = None

@@ -5,18 +5,21 @@ A GraphicsItem that represents a port on a node. A port represents a named input
 import sys
 import uuid
 from PySide6 import QtGui, QtWidgets
+from radium.nodegraph.node_types.prototypes import PortPrototype
 
 
-class Port(QtWidgets.QGraphicsPathItem):
-    def __init__(self, name, datatype, unique_id=None, max_connections=1, parent=None):
+class Port(QtWidgets.QGraphicsRectItem):
+    def __init__(
+        self, name: str, datatype: str, unique_id=None, max_connections=1, parent=None
+    ):
         super().__init__(parent=parent)
-        self.name = name
-        self.datatype = datatype
+        self.__name = name
+        self.__datatype = datatype
         self.__max_connections = max_connections
         self._unique_id = unique_id or uuid.uuid4().hex
         self.setFlag(self.GraphicsItemFlag.ItemNegativeZStacksBehindParent)
         self.setFlag(self.GraphicsItemFlag.ItemSendsScenePositionChanges)
-        self.setZValue(-1)
+        self.setRect(-5, -5, 10, 10)
 
     def itemChange(self, change: QtWidgets.QGraphicsItem.GraphicsItemChange, value):
         if (
@@ -35,7 +38,7 @@ class Port(QtWidgets.QGraphicsPathItem):
     def connections(self):
         return self.scene().getConnections(self)
 
-    def unique_id(self):
+    def uniqueId(self):
         return self._unique_id
 
     def node(self):
@@ -50,14 +53,38 @@ class Port(QtWidgets.QGraphicsPathItem):
 
         return True
 
+    def datatype(self):
+        return self.__datatype
+
+    def name(self):
+        return self.__name
+
+    def toDict(self):
+        return {
+            "datatype": self.datatype(),
+            "name": self.name(),
+            "unique_id": self.uniqueId(),
+        }
+
+    @classmethod
+    def fromDict(cls, data):
+        return cls(data["name"], data["datatype"], data["unique_id"])
+
+    @classmethod
+    def fromPrototype(cls, prototype: "PortPrototype"):
+        return cls(prototype.name, prototype.datatype)
+
 
 class OutputPort(Port):
-    def __init__(self, name, datatype, parent=None):
-        super().__init__(name, datatype, max_connections=sys.maxsize, parent=parent)
+    def __init__(self, name, datatype, unique_id=None, parent=None):
+        super().__init__(
+            name,
+            datatype,
+            max_connections=sys.maxsize,
+            unique_id=unique_id,
+            parent=parent,
+        )
         self.setBrush(QtGui.QColor(64, 64, 64))
-        path = QtGui.QPainterPath()
-        path.addRect(-5, -5, 10, 10)
-        self.setPath(path)
 
     def canConnectTo(self, port):
         if not isinstance(port, InputPort):
@@ -67,12 +94,11 @@ class OutputPort(Port):
 
 
 class InputPort(Port):
-    def __init__(self, name, datatype, parent=None):
-        super().__init__(name, datatype, max_connections=1, parent=parent)
+    def __init__(self, name, datatype, unique_id=None, parent=None):
+        super().__init__(
+            name, datatype, max_connections=1, unique_id=unique_id, parent=parent
+        )
         self.setBrush(QtGui.QColor(127, 127, 150))
-        path = QtGui.QPainterPath()
-        path.addRect(-5, -5, 10, 10)
-        self.setPath(path)
 
     def canConnectTo(self, port):
         if not isinstance(port, OutputPort):

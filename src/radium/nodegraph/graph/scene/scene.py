@@ -1,8 +1,9 @@
 import typing
 from PySide6 import QtWidgets, QtCore
 
-from radium.nodegraph.scene.connection import Connection
-from radium.nodegraph.scene.port import Port
+from radium.nodegraph.graph.scene.connection import Connection
+from radium.nodegraph.graph.scene.port import Port
+from radium.nodegraph.graph.scene.node import Node
 
 
 class NodeGraphScene(QtWidgets.QGraphicsScene):
@@ -28,6 +29,12 @@ class NodeGraphScene(QtWidgets.QGraphicsScene):
             super().removeItem(item)
 
         self.itemRemoved.emit(item)
+
+    def nodes(self):
+        return [n for n in self.items() if isinstance(n, Node)]
+
+    def selectedNodes(self):
+        return [n for n in self.selectedItems() if isinstance(n, Node)]
 
     def getConnections(self, port):
         return self.__port_to_connections.get(port, [])
@@ -58,3 +65,36 @@ class NodeGraphScene(QtWidgets.QGraphicsScene):
 
         for connection in connections:
             connection.updatePath()
+
+    def dumpNodes(self, node_list: typing.List[Node]):
+        result = {}
+        nodes = result["nodes"] = {}
+        connections = result["connections"] = []
+
+        found_connections: typing.Set[Connection] = set()
+
+        for node in node_list:
+            nodes[node.uniqueId()] = node.toDict()
+            for port in node.inputs():
+                found_connections.update(self.getConnections(port))
+            for port in node.outputs():
+                found_connections.update(self.getConnections(port))
+
+        for connection in found_connections:
+            connections.append(connection.toDict())
+
+        return result
+
+    def dumpDict(self):
+        nodes = [i for i in self.items() if isinstance(i, Node)]
+        return self.dumpNodes(nodes)
+
+    def loadDict(self, data):
+        nodes = {}
+        for node_id, node_data in data["nodes"].items():
+            node = nodes[node_id] = Node.fromDict(node_data)
+            self.addItem(node)
+
+        for connection_data in data["connections"]:
+            connection = Connection.fromDict(connection_data, nodes)
+            self.addConnection(connection)
