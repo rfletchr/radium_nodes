@@ -7,7 +7,8 @@ from radium.demo.controller import MainController
 
 
 def main():
-    os.environ["QT_QPA_PLATFORM"] = "xcb"
+    if sys.platform == "linux":
+        os.environ["QT_QPA_PLATFORM"] = "xcb"
     app = QtWidgets.QApplication()
     app.setApplicationDisplayName("Radium Demo")
     app.setApplicationName("Radium Demo")

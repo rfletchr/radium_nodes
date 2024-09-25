@@ -31,6 +31,7 @@ main()
 - [X] Node Browser.
 - [ ] Node Parameters.
 - [ ] Node Groups & Gizmos
+- [ ] Graph Events or Signals
 - [ ] Documentation
 
 ### Nice to have
