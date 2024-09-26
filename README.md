@@ -2,7 +2,9 @@
 
 # Radium Nodes
 
-A no frills, vertical node-graph editor for PySide6. This project is currently in active development and a concrete API is not yet defined.
+A no frills, vertical node-graph editor for PySide6. 
+
+⚠️`This project is currently in active development and a concrete API is not yet defined.`
 
 ## Demo Application
 
