@@ -1,7 +1,10 @@
+![img](img/example.png)
+
 # Radium Nodes
 
-A no frills, vertical node-graph editor for PySide6.
-![img](img/example.png)
+A no frills, vertical node-graph editor for PySide6. 
+
+⚠️`This project is currently in active development and a concrete API is not yet defined.`
 
 ## Demo Application
 
@@ -37,4 +40,4 @@ main()
 ### Nice to have
 
 - [ ] Custom Node Drawing.
-- [ ] Custom Port Drawing.
+- [X] Custom Port Drawing.

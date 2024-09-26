@@ -8,22 +8,27 @@ from radium.nodegraph.graph.scene.connection import Connection
 from radium.nodegraph.graph.scene.port import InputPort, OutputPort
 
 if typing.TYPE_CHECKING:
-    from radium.nodegraph.node_types.prototypes import NodePrototype
+    from radium.nodegraph.node_types.prototypes import NodeType
+    from radium.nodegraph.node_types.factory import NodeFactory
+
 
 MOVE_NODES_COMMAND_ID = 1000
 
 
 class CreateNodeCommand(QtGui.QUndoCommand):
-    def __init__(self, scene: NodeGraphScene, prototype: "NodePrototype"):
+    def __init__(
+        self, scene: NodeGraphScene, node_type: "NodeType", factory: "NodeFactory"
+    ):
         super().__init__()
         self.setText("Create Node")
         self.scene = scene
-        self.prototype = prototype
+        self.node_type = node_type
+        self.factory = factory
         self.node: typing.Optional[Node] = None
 
     def redo(self):
         if self.node is None:
-            self.node = Node.fromPrototype(self.prototype)
+            self.node = Node.fromPrototype(self.node_type, self.factory)
 
         self.scene.addItem(self.node)
 
@@ -135,12 +140,18 @@ class MoveNodesCommand(QtGui.QUndoCommand):
 
 class CloneNodeCommand(QtGui.QUndoCommand):
     def __init__(
-        self, scene: "NodeGraphScene", node: "Node", position=None, parent=None
+        self,
+        scene: "NodeGraphScene",
+        node: "Node",
+        factory: "NodeFactory",
+        position=None,
+        parent=None,
     ):
         super().__init__(parent=parent)
         self.setText("Clone Node")
         self.scene = scene
-        self.node = Node.fromNode(node)
+        self.factory = factory
+        self.node = Node.fromNode(node, factory)
         self.node.setPos(position if position is not None else node.pos())
 
     def redo(self):

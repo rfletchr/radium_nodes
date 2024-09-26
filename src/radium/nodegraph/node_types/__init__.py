@@ -1,2 +1,2 @@
 from .prototypes import *
-from .registry import *
+from .factory import *

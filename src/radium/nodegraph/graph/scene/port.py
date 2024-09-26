@@ -3,9 +3,12 @@ A GraphicsItem that represents a port on a node. A port represents a named input
 """
 
 import sys
+import typing
 import uuid
 from PySide6 import QtGui, QtWidgets
-from radium.nodegraph.node_types.prototypes import PortPrototype
+
+if typing.TYPE_CHECKING:
+    from radium.nodegraph.node_types.prototypes import PortType
 
 
 class Port(QtWidgets.QGraphicsRectItem):
@@ -71,8 +74,11 @@ class Port(QtWidgets.QGraphicsRectItem):
         return cls(data["name"], data["datatype"], data["unique_id"])
 
     @classmethod
-    def fromPrototype(cls, prototype: "PortPrototype"):
-        return cls(prototype.name, prototype.datatype)
+    def fromPrototype(cls, name, port_type: "PortType"):
+        instance = cls(name, port_type.port_type)
+        instance.setPen(port_type.pen)
+        instance.setBrush(port_type.brush)
+        return instance
 
 
 class OutputPort(Port):
