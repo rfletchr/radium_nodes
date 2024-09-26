@@ -23,16 +23,16 @@ class MainController(QtCore.QObject):
         self.__dirty = False
         self.settings = QtCore.QSettings("radium", "nodegraph.demo")
         self.undo_stack = QtGui.QUndoStack()
-        self.node_registry = NodeFactory()
+        self.node_factory = NodeFactory()
 
         self.node_graph_view = NodeGraphView()
         self.node_graph_controller = NodeGraphController(
-            undo_stack=self.undo_stack, node_registry=self.node_registry
+            undo_stack=self.undo_stack, node_factory=self.node_factory
         )
         self.node_graph_controller.attachView(self.node_graph_view)
 
         self.node_browser_view = NodeBrowserView()
-        self.node_browser_view.setModel(self.node_registry.node_types_model)
+        self.node_browser_view.setModel(self.node_factory.node_types_model)
 
         self.central_widget = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         self.central_widget.addWidget(self.node_browser_view)
@@ -45,7 +45,7 @@ class MainController(QtCore.QObject):
         self.edit_menu = self.main_window.menuBar().addMenu("&Edit")
 
         self.recent_files_menu = QtWidgets.QMenu("Recent")
-        self.recent_files_menu.aboutToShow.connect(self.onRecentFilesAboutToShow)
+        self.recent_files_menu.aboutToShow.connect(self.rebuildRecentFilesMenu)
 
         self.__current_filename = None
         self.__recent_files: typing.List[str] = json.loads(
@@ -62,33 +62,38 @@ class MainController(QtCore.QObject):
         Register some basic example nodes. Nodes prototypes must be registered
         before they can be created.
         """
-        self.node_registry.register(
-            prototypes.NodePrototype(
+        self.node_factory.registerPortType(
+            prototypes.PortType(
+                "image",
+                QtGui.QPen(QtGui.QColor(0, 127, 0, 255)),
+                QtGui.QBrush(QtGui.QColor(0, 255, 0, 255)),
+            )
+        )
+
+        self.node_factory.registerNodeType(
+            prototypes.NodeType(
                 "Merge",
-                inputs=(
-                    prototypes.PortPrototype("a", "image"),
-                    prototypes.PortPrototype("b", "image"),
-                ),
-                outputs=(prototypes.PortPrototype("image", "image"),),
+                inputs={
+                    "a": "image",
+                    "b": "image",
+                },
+                outputs={"image": "image"},
                 parameters=tuple(),
             )
         )
-        self.node_registry.register(
-            prototypes.NodePrototype(
+        self.node_factory.registerNodeType(
+            prototypes.NodeType(
                 "Constant",
-                inputs=tuple(),
-                outputs=(prototypes.PortPrototype("image", "image"),),
+                outputs={"image": "image"},
                 parameters=tuple(),
                 icon="fa.image",
             )
         )
 
-        self.node_registry.register(
-            prototypes.NodePrototype(
+        self.node_factory.registerNodeType(
+            prototypes.NodeType(
                 "LoadImage",
-                inputs=tuple(),
-                outputs=(prototypes.PortPrototype("image", "image"),),
-                parameters=tuple(),
+                outputs={"image": "image"},
                 icon="fa.file",
             )
         )
@@ -156,7 +161,7 @@ class MainController(QtCore.QObject):
         self.settings.setValue("recent_files", json.dumps(self.__recent_files))
 
     @QtCore.Slot()
-    def onRecentFilesAboutToShow(self):
+    def rebuildRecentFilesMenu(self):
         """
         When the recent files menu is about to show populate it with a list of recent files.
         """
@@ -166,8 +171,15 @@ class MainController(QtCore.QObject):
             action = QtGui.QAction(
                 os.path.basename(recent_file), parent=self.recent_files_menu
             )
-            action.triggered.connect(lambda: self.onOpenAction(filename=recent_file))
+            action.setData(recent_file)
+            action.triggered.connect(self.onRecentFileClicked)
             self.recent_files_menu.addAction(action)
+
+    @QtCore.Slot()
+    def onRecentFileClicked(self):
+        action: QtGui.QAction = self.sender()
+        path = action.data()
+        self.onOpenAction(filename=path)
 
     @QtCore.Slot()
     def onResetAction(self):
@@ -199,6 +211,8 @@ class MainController(QtCore.QObject):
         if not self.onResetAction():
             return
 
+        print("loading filename", filename)
+
         if filename is None:
             self.__current_filename, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self.main_window,
@@ -221,7 +235,7 @@ class MainController(QtCore.QObject):
 
         self.__storeRecentFile(self.__current_filename)
 
-        self.node_graph_controller.scene.loadDict(data)
+        self.node_graph_controller.scene.loadDict(data, self.node_factory)
         self.updateWindowTitle()
 
     def updateWindowTitle(self):
