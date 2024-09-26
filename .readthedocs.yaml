@@ -9,6 +9,9 @@ python:
   install:
     - method: setuptools
       path: .
+      extra_requirements:
+        - sphinx_rtd_theme
+
 
 sphinx:
   configuration: docs/source/conf.py
