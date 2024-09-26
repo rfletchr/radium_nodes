@@ -4,7 +4,7 @@ import typing
 from PySide6 import QtGui, QtCore, QtWidgets
 
 from radium.nodegraph import constants
-from radium.nodegraph.node_types.prototypes import NodePrototype
+from radium.nodegraph.node_types.prototypes import NodeType
 
 
 def iter_categories(node_type_name: str):
@@ -40,7 +40,7 @@ class CategoryItem(QtGui.QStandardItem):
 
 
 class NodePrototypeItem(QtGui.QStandardItem):
-    def __init__(self, node_prototype: NodePrototype):
+    def __init__(self, node_prototype: NodeType):
         super().__init__(node_prototype.name())
         self.node_prototype = node_prototype
         self.setEditable(False)
@@ -59,7 +59,7 @@ class NodePrototypeModel(QtGui.QStandardItemModel):
             index = self.indexFromItem(item)
             self.removeRow(index.row(), parent=index.parent())
 
-    def addPrototype(self, prototype: NodePrototype):
+    def addPrototype(self, prototype: NodeType):
         parent = self.invisibleRootItem()
 
         for category, name in iter_categories(prototype.category()):
@@ -92,7 +92,7 @@ class NodePrototypeModel(QtGui.QStandardItemModel):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication()
-    prototype = NodePrototype(node_type="General/Image/Merge")
+    prototype = NodeType(node_type="General/Image/Merge")
 
     model = NodePrototypeModel()
     model.addPrototype(prototype)

@@ -2,32 +2,37 @@
 A GraphicsItem that represents a node in a node nodegraph.
 """
 
+import json
 import typing
 import uuid
 
 from PySide6 import QtCore, QtGui, QtWidgets
+
 from radium.nodegraph.graph.scene.port import InputPort, OutputPort
 
 if typing.TYPE_CHECKING:
-    from radium.nodegraph.node_types.prototypes import NodePrototype
+    from radium.nodegraph.node_types.prototypes import NodeType
+    from radium.nodegraph.node_types.factory import NodeFactory
 
 
 class Node(QtWidgets.QGraphicsRectItem):
     @classmethod
-    def fromPrototype(cls, prototype: "NodePrototype"):
+    def fromPrototype(cls, prototype: "NodeType", factory: "NodeFactory") -> "Node":
         node = cls(prototype.node_type)
-        for port_prototype in prototype.inputs:
-            node.addPort(InputPort.fromPrototype(port_prototype))
+        for name, port_type in prototype.inputs.items():
+            port = factory.createPortInstance(name, port_type, is_input=True)
+            node.addPort(port)
 
-        for port_prototype in prototype.outputs:
-            node.addPort(OutputPort.fromPrototype(port_prototype))
+        for name, port_type in prototype.outputs.items():
+            port = factory.createPortInstance(name, port_type, is_input=False)
+            node.addPort(port)
 
         return node
 
     @classmethod
-    def fromNode(cls, node: "Node") -> "Node":
+    def fromNode(cls, node: "Node", factory: "NodeFactory") -> "Node":
         data = node.toDict()
-        return cls.fromDict(data)
+        return cls.fromDict(data, factory)
 
     def toDict(self):
         return {
@@ -35,12 +40,12 @@ class Node(QtWidgets.QGraphicsRectItem):
             "name": self.name(),
             "position": [self.pos().x(), self.pos().y()],
             "unique_id": self.uniqueId(),
-            "inputs": [i.toDict() for i in self.inputs().values()],
-            "outputs": [o.toDict() for o in self.outputs().values()],
+            "inputs": {k: v.toDict() for k, v in self.inputs().items()},
+            "outputs": {k: v.toDict() for k, v in self.outputs().items()},
         }
 
     @classmethod
-    def fromDict(cls, node_dict):
+    def fromDict(cls, node_dict, factory: "NodeFactory"):
         instance = cls(
             node_dict["type"], name=node_dict["name"], unique_id=node_dict["unique_id"]
         )
@@ -48,11 +53,13 @@ class Node(QtWidgets.QGraphicsRectItem):
         pos = QtCore.QPointF(node_dict["position"][0], node_dict["position"][1])
         instance.setPos(pos)
 
-        for input_data in node_dict["inputs"]:
-            instance.addPort(InputPort.fromDict(input_data))
+        for name, input_data in node_dict["inputs"].items():
+            port = factory.createPortInstance(name, input_data, is_input=True)
+            instance.addPort(port)
 
-        for output_data in node_dict["outputs"]:
-            instance.addPort(OutputPort.fromDict(output_data))
+        for name, output_data in node_dict["outputs"].items():
+            port = factory.createPortInstance(name, output_data, is_input=False)
+            instance.addPort(port)
 
         return instance
 
@@ -174,7 +181,7 @@ class Node(QtWidgets.QGraphicsRectItem):
             port.setPos(x + port.boundingRect().width() * 0.5, y)
             x += port.boundingRect().width() + spacing
 
-    def addPort(self, port: typing.Union[InputPort, OutputPort]):
+    def addPort(self, port: typing.Union["InputPort", "OutputPort"]):
         if isinstance(port, InputPort):
             store = self.__inputs
         elif isinstance(port, OutputPort):

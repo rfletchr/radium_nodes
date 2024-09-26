@@ -5,6 +5,9 @@ from radium.nodegraph.graph.scene.connection import Connection
 from radium.nodegraph.graph.scene.port import Port
 from radium.nodegraph.graph.scene.node import Node
 
+if typing.TYPE_CHECKING:
+    from radium.nodegraph.node_types import NodeFactory
+
 
 class NodeGraphScene(QtWidgets.QGraphicsScene):
     itemAdded = QtCore.Signal(QtWidgets.QGraphicsItem)
@@ -89,10 +92,10 @@ class NodeGraphScene(QtWidgets.QGraphicsScene):
         nodes = [i for i in self.items() if isinstance(i, Node)]
         return self.dumpNodes(nodes)
 
-    def loadDict(self, data):
+    def loadDict(self, data, factory: "NodeFactory"):
         nodes = {}
         for node_id, node_data in data["nodes"].items():
-            node = nodes[node_id] = Node.fromDict(node_data)
+            node = nodes[node_id] = Node.fromDict(node_data, factory)
             self.addItem(node)
 
         for connection_data in data["connections"]:

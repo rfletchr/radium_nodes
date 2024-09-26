@@ -12,6 +12,7 @@ from radium.nodegraph.graph.scene.node import Node
 from radium.nodegraph.graph.scene.dot import Dot
 from radium.nodegraph.graph.scene.connection import Connection
 from radium.nodegraph.graph.scene.port import InputPort, OutputPort, Port
+from radium.nodegraph.node_types import NodeFactory
 
 if typing.TYPE_CHECKING:
     from radium.nodegraph.graph.scene import NodeGraphScene
@@ -84,20 +85,21 @@ def get_potential_port(
 
 
 class PreviewLine(QtWidgets.QGraphicsLineItem):
-    def __init__(self, parent=None):
+    def __init__(self, color: QtGui.QColor = None, parent=None):
         super().__init__(parent)
-        self.setPen(
-            QtGui.QPen(QtGui.QColor(0, 0, 0, 100), 2, QtCore.Qt.PenStyle.DotLine)
-        )
+
+        color = color or QtGui.QColor(0, 0, 0, 100)
+
+        self.setPen(QtGui.QPen(color, 2, QtCore.Qt.PenStyle.DotLine))
         self.setZValue(1000)
 
 
 class PreviewRect(QtWidgets.QGraphicsRectItem):
-    def __init__(self, parent=None):
+    def __init__(self, color: QtGui.QColor = None, parent=None):
         super().__init__(parent)
-        self.setPen(
-            QtGui.QPen(QtGui.QColor(0, 0, 0, 100), 2, QtCore.Qt.PenStyle.DotLine)
-        )
+        color = color or QtGui.QColor(0, 0, 0, 100)
+
+        self.setPen(QtGui.QPen(color, 2, QtCore.Qt.PenStyle.DotLine))
         self.setZValue(1000)
 
 
@@ -180,6 +182,7 @@ class ConnectionTool(Tool):
     def __init__(self, controller: "SceneEventFilter"):
         super().__init__(controller)
         self.preview_line: PreviewLine = PreviewLine()
+        self.preview_rect: PreviewRect = PreviewRect(color=QtGui.QColor(0, 255, 0, 100))
         self.start_port = None
 
     def match(self, event, item):
@@ -191,20 +194,46 @@ class ConnectionTool(Tool):
         """
         begin drawing a preview line from the given port
         """
+        self.preview_rect.hide()
+        self.controller.scene.addItem(self.preview_rect)
         self.controller.scene.addItem(self.preview_line)
+
         self.start_port = item
         self.preview_line.setLine(
             QtCore.QLineF(self.start_port.scenePos(), event.scenePos())
         )
         return True
 
+    def itemAt(self, pos: QtCore.QPointF):
+        for item in self.controller.scene.items(pos):
+            if isinstance(item, PreviewLine):
+                continue
+            return item
+
     def mouseMoveEvent(self, event):
         """
         update the end point of the preview line
         """
+
         self.preview_line.setLine(
             QtCore.QLineF(self.start_port.scenePos(), event.scenePos())
         )
+
+        scene_item = self.itemAt(event.scenePos())
+
+        if isinstance(scene_item, (Port, Dot, Node)):
+            end_port = get_potential_port(self.start_port, scene_item, event.scenePos())
+            if end_port and end_port.canConnectTo(self.start_port):
+                self.preview_rect.setRect(
+                    end_port.boundingRect().adjusted(-5, -5, 5, 5)
+                )
+                self.preview_rect.setPos(end_port.scenePos())
+                self.preview_rect.show()
+            else:
+                self.preview_rect.hide()
+        else:
+            self.preview_rect.hide()
+
         return True
 
     def mouseReleaseEvent(self, event):
@@ -212,6 +241,7 @@ class ConnectionTool(Tool):
         if the preview line ends on a port or a dot, create an appropriate connection.
         """
         self.controller.scene.removeItem(self.preview_line)
+        self.controller.scene.removeItem(self.preview_rect)
 
         scene_item = self.controller.scene.itemAt(event.scenePos(), QtGui.QTransform())
 
@@ -229,17 +259,12 @@ class ConnectionTool(Tool):
         return True
 
 
-class EditConnectionTool(Tool):
+class EditConnectionTool(ConnectionTool):
     """
     Handles:
         - dragging a connection to disconnect it.
         - dragging a connection to move it to another port.
     """
-
-    def __init__(self, controller: "SceneEventFilter"):
-        super().__init__(controller)
-        self._start_port = None
-        self.preview_line = PreviewLine()
 
     def match(self, event, item):
         ctrl_pressed = event.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier
@@ -265,46 +290,25 @@ class EditConnectionTool(Tool):
         # set the start port to the furthest port, conceptually your disconnecting
         # the closest port.
         if distance_to_input < distance_to_output:
-            self._start_port = item.output_port
+            self.start_port = item.output_port
         else:
-            self._start_port = item.input_port
+            self.start_port = item.input_port
 
         self.controller.scene.addItem(self.preview_line)
-        self.preview_line.setLine(
-            QtCore.QLineF(self._start_port.scenePos(), event.scenePos())
-        )
-        return True
+        self.controller.scene.addItem(self.preview_rect)
+        self.preview_rect.hide()
 
-    def mouseMoveEvent(self, event):
         self.preview_line.setLine(
-            QtCore.QLineF(self._start_port.scenePos(), event.scenePos())
+            QtCore.QLineF(self.start_port.scenePos(), event.scenePos())
         )
         return True
 
     def mouseReleaseEvent(self, event):
         try:
-            self.controller.scene.removeItem(self.preview_line)
-
-            scene_item = self.controller.scene.itemAt(
-                event.scenePos(), QtGui.QTransform()
-            )
-
-            if isinstance(scene_item, (Port, Dot, Node)):
-                end_port = get_potential_port(
-                    self._start_port, scene_item, event.scenePos()
-                )
-
-                if end_port.canConnectTo(self._start_port):
-                    output_port, input_port = sort_ports(end_port, self._start_port)
-
-                    cmd = commands.CreateConnectionCommand(
-                        self.controller.scene, output_port, input_port
-                    )
-                    self.controller.undo_stack.push(cmd)
-
-            self.controller.undo_stack.endMacro()
+            super().mouseReleaseEvent(event)
         finally:
-            self.controller.clearTool()
+            self.controller.undo_stack.endMacro()
+
         return True
 
 
@@ -424,7 +428,10 @@ class AltDragCloneTool(Tool):
     def mouseReleaseEvent(self, event):
         """ """
         cmd = commands.CloneNodeCommand(
-            self.controller.scene, self.dragged_node, position=event.scenePos()
+            self.controller.scene,
+            self.dragged_node,
+            self.controller.node_factory,
+            position=event.scenePos(),
         )
         self.controller.undo_stack.push(cmd)
         self.dragged_node = None
@@ -491,10 +498,15 @@ class SceneEventFilter(QtCore.QObject):
     """
 
     def __init__(
-        self, scene: "NodeGraphScene", undo_stack: QtGui.QUndoStack, parent=None
+        self,
+        scene: "NodeGraphScene",
+        undo_stack: QtGui.QUndoStack,
+        node_factory: "NodeFactory",
+        parent=None,
     ):
         super().__init__(parent=parent)
         self.scene = scene
+        self.node_factory = node_factory
         self.undo_stack = undo_stack
         self.scene.installEventFilter(self)
 

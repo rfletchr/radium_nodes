@@ -7,7 +7,7 @@ from radium.nodegraph.graph.scene.backdrop import Backdrop
 from radium.nodegraph.graph.scene import NodeGraphScene, commands
 from radium.nodegraph.graph.scene.port import InputPort, OutputPort
 from radium.nodegraph.graph.scene.connection import Connection
-from radium.nodegraph.node_types.registry import NodeFactory
+from radium.nodegraph.node_types.factory import NodeFactory
 
 if typing.TYPE_CHECKING:
     from radium.nodegraph.graph.view import NodeGraphView
@@ -17,24 +17,29 @@ class NodeGraphController(QtCore.QObject):
     def __init__(
         self,
         undo_stack: QtGui.QUndoStack = None,
-        node_registry: NodeFactory = None,
+        node_factory: NodeFactory = None,
         parent=None,
     ):
         super().__init__(parent)
         self.scene = NodeGraphScene()
-        self.node_registry = node_registry or NodeFactory()
+        self.node_factory = node_factory or NodeFactory()
         self.undo_stack = undo_stack or QtGui.QUndoStack()
 
-        self.scene_event_filter = SceneEventFilter(self.scene, self.undo_stack)
+        self.scene_event_filter = SceneEventFilter(
+            self.scene,
+            self.undo_stack,
+            self.node_factory,
+        )
 
     def attachView(self, view: "NodeGraphView"):
         view.setScene(self.scene)
         view.createNodeRequested.connect(self.onNodeCreationRequested)
 
     def createNode(self, node_type) -> Node:
-        prototype = self.node_registry.get_prototype(node_type)
-        cmd = commands.CreateNodeCommand(self.scene, prototype)
-        cmd.setText(f"Create: {prototype.node_type}")
+        node_type = self.node_factory.getNodeType(node_type)
+        cmd = commands.CreateNodeCommand(self.scene, node_type, self.node_factory)
+        cmd.setText(f"Create: {node_type.node_type}")
+
         self.undo_stack.push(cmd)
         return cmd.node
 
