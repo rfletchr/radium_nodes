@@ -14,6 +14,10 @@ from radium.nodegraph.node_types.model import NodePrototypeModel
 
 
 class NodeFactory(QtCore.QObject):
+    """
+    The NodeFactory is responsible for properly creating instances of Nodes and Ports.
+    """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.__node_types = {}
@@ -21,6 +25,16 @@ class NodeFactory(QtCore.QObject):
         self.node_types_model = NodePrototypeModel()
 
     def registerPortType(self, port_type: PortType, exists_ok=False):
+        """
+        Register a port type so that it can be added to nodes.
+
+        Args:
+            port_type(PortType): the port type to register.
+            exists_ok(bool): is it ok to overwrite an existing port type?
+
+        Raises:
+            ValueError: if the port type is already registered and exists_ok is not set to True.
+        """
         if port_type.port_type in self.__port_types:
             if not exists_ok:
                 raise ValueError(f"Port Type: {port_type.port_type} already registered")

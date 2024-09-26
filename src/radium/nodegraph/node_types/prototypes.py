@@ -31,7 +31,8 @@ class PortType:
 
 @dataclasses.dataclass(frozen=True)
 class NodeType:
-    node_type: str
+    name: str
+    category: str = "Nodes"
     parameters: typing.Tuple[ParameterPrototype, ...] = dataclasses.field(
         default_factory=tuple
     )
@@ -39,14 +40,3 @@ class NodeType:
     outputs: typing.Dict[str, str] = dataclasses.field(default_factory=dict)
 
     icon: str = "fa5s.toolbox"
-
-    def category(self):
-        if "/" in self.node_type:
-            return self.node_type[: self.node_type.rindex("/")]
-        return "Nodes"
-
-    def name(self):
-        if "/" in self.node_type:
-            return self.node_type[self.node_type.rindex("/") + 1 :]
-
-        return self.node_type

@@ -9,5 +9,5 @@ setup(
     package_dir={"": "src"},
     install_requires=["PySide6", "qtawesome"],
     entry_points={"console_scripts": ["radium-demo=radium.demo.__main__:main"]},
-    extras_require={"docs": ["sphinx_rtd_theme"]},
+    extras_require={"docs": ["mkdocs-material", "mkdocs"]},
 )
