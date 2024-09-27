@@ -15,6 +15,15 @@ if typing.TYPE_CHECKING:
     from radium.nodegraph.factory.factory import NodeFactory
 
 
+class NodeDataDict(typing.TypedDict):
+    node_type: str
+    name: str
+    position: typing.Tuple[float, float]
+    unique_id: str
+    inputs: typing.Dict[str, typing.Dict]
+    outputs: typing.Dict[str, typing.Dict]
+
+
 class Node(QtWidgets.QGraphicsRectItem):
     @classmethod
     def fromPrototype(
@@ -22,9 +31,6 @@ class Node(QtWidgets.QGraphicsRectItem):
     ) -> "Node":
         kwargs.setdefault("name", node_type.name)
         node = cls(node_type.type_name, **kwargs)
-
-        node.setPen(factory.createPen(node_type.outline_color))
-        node.setBrush(factory.createBrush(node_type.color))
 
         for name, port_type in node_type.inputs.items():
             port = factory.createPortInstance(name, port_type, is_input=True)
@@ -37,54 +43,38 @@ class Node(QtWidgets.QGraphicsRectItem):
         return node
 
     @classmethod
-    def fromNode(cls, node: "Node", factory: "NodeFactory") -> "Node":
+    def cloneNode(cls, node: "Node", factory: "NodeFactory") -> "Node":
         data = node.toDict()
-        return cls.fromDict(data, factory)
+        return factory.createNodeInstance(data)
 
     def toDict(self):
-        return {
-            "type": self.nodeType(),
-            "name": self.name(),
-            "position": [self.pos().x(), self.pos().y()],
-            "unique_id": self.uniqueId(),
-            "inputs": {k: v.toDict() for k, v in self.inputs().items()},
-            "outputs": {k: v.toDict() for k, v in self.outputs().items()},
-        }
+        return NodeDataDict(
+            node_type=self.__node_type,
+            name=self.__name,
+            position=(self.pos().x(), self.pos().y()),
+            unique_id=self.__unique_id,
+            inputs={k: v.toDict() for k, v in self.inputs().items()},
+            outputs={k: v.toDict() for k, v in self.outputs().items()},
+        )
 
-    @classmethod
-    def fromDict(cls, node_dict, factory: "NodeFactory"):
+    def loadDict(self, data: NodeDataDict, factory: "NodeFactory") -> None:
+        self.__node_type = data["node_type"]
+        self.__name = data["name"]
+        self.setPos(QtCore.QPointF(data["position"][0], data["position"][1]))
+        self.__unique_id = data["unique_id"]
 
-        if factory.hasNodeType(node_dict["type"]):
-            instance = factory.createNodeInstance(
-                node_dict["type"],
-                unique_id=node_dict["unique_id"],
-                name=node_dict["name"],
-            )
-        else:
-            instance = cls(
-                node_dict["type"],
-                name=node_dict["name"],
-                unique_id=node_dict["unique_id"],
-            )
-            instance.setBrush(factory.createBrush((127, 0, 0)))
-            instance.setPen(factory.createPen((127, 0, 0)))
-
-        pos = QtCore.QPointF(node_dict["position"][0], node_dict["position"][1])
-        instance.setPos(pos)
-
-        for name, input_data in node_dict["inputs"].items():
-            if instance.hasPort(name, is_input=True):
+        for port_name, port_data in data["inputs"].items():
+            if self.hasPort(port_name, is_input=True):
                 continue
-            port = factory.createPortInstance(name, input_data, is_input=True)
-            instance.addPort(port)
+            port = factory.createPortInstance(port_name, port_data, is_input=True)
+            self.addPort(port)
 
-        for name, output_data in node_dict["outputs"].items():
-            if instance.hasPort(name, is_input=False):
+        for port_name, port_data in data["outputs"].items():
+            if self.hasPort(port_name, is_input=False):
                 continue
-            port = factory.createPortInstance(name, output_data, is_input=False)
-            instance.addPort(port)
 
-        return instance
+            port = factory.createPortInstance(port_name, port_data, is_input=False)
+            self.addPort(port)
 
     def __init__(self, type_name: str, name: str = None, unique_id=None, parent=None):
         super().__init__(parent)
@@ -96,8 +86,8 @@ class Node(QtWidgets.QGraphicsRectItem):
         self.__outputs: typing.Dict[str, OutputPort] = {}
 
         self.__unique_id = unique_id or uuid.uuid4().hex
-        self.__type = type_name
-        self.__label = name or type_name
+        self.__node_type = type_name
+        self.__name = name or type_name
 
         self._font = QtGui.QFont("Consolas", 10)
         self._font_metrics = QtGui.QFontMetrics(self._font)
@@ -107,7 +97,7 @@ class Node(QtWidgets.QGraphicsRectItem):
 
         self.__dirty = False
         self.__rect = QtCore.QRectF()
-        self.setName(self.__label)
+        self.setName(self.__name)
 
     def inputs(self):
         return self.__inputs.copy()
@@ -119,10 +109,10 @@ class Node(QtWidgets.QGraphicsRectItem):
         return self.__unique_id
 
     def name(self):
-        return self.__label
+        return self.__name
 
     def nodeType(self):
-        return self.__type
+        return self.__node_type
 
     def setName(self, value, layout=True):
         rect = QtCore.QRectF(self._font_metrics.boundingRect(value))
@@ -131,7 +121,7 @@ class Node(QtWidgets.QGraphicsRectItem):
         self._name_rect.setHeight(rect.height())
         self._name_rect.moveCenter(QtCore.QPointF(0, 0))
 
-        self.__label = value
+        self.__name = value
         self.__dirty = True
 
     def paint(
@@ -156,7 +146,7 @@ class Node(QtWidgets.QGraphicsRectItem):
         pen = self.palette.color(self.palette.ColorRole.Text)
         painter.setPen(pen)
         painter.setFont(self._font)
-        painter.drawText(self._name_rect, self.__label)
+        painter.drawText(self._name_rect, self.__name)
 
     def layout(self):
         if not self.__dirty:

@@ -2,6 +2,7 @@ import typing
 import uuid
 
 from PySide6 import QtGui, QtWidgets, QtCore
+
 from radium.nodegraph.graph.scene import NodeGraphScene
 from radium.nodegraph.graph.scene.node import Node
 from radium.nodegraph.graph.scene.connection import Connection
@@ -28,7 +29,7 @@ class CreateNodeCommand(QtGui.QUndoCommand):
 
     def redo(self):
         if self.node is None:
-            self.node = Node.fromPrototype(self.node_type, self.factory)
+            self.node = self.factory.createNodeInstance(self.node_type)
 
         self.scene.addItem(self.node)
 
@@ -151,7 +152,7 @@ class CloneNodeCommand(QtGui.QUndoCommand):
         self.setText("Clone Node")
         self.scene = scene
         self.factory = factory
-        self.node = Node.fromNode(node, factory)
+        self.node = Node.cloneNode(node, factory)
         self.node.setPos(position if position is not None else node.pos())
 
     def redo(self):

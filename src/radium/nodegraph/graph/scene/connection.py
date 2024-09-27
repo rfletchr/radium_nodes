@@ -65,8 +65,8 @@ class Connection(QtWidgets.QGraphicsPathItem):
     @classmethod
     def fromDict(cls, data, id_to_node_map: typing.Dict[str, "Node"]):
         output_node = id_to_node_map[data["output_node"]]
-        output_port = output_node.outputs[data["output_port"]]
+        output_port = output_node.outputs()[data["output_port"]]
         input_node = id_to_node_map[data["input_node"]]
-        input_port = input_node.inputs[data["input_port"]]
+        input_port = input_node.inputs()[data["input_port"]]
 
         return cls(output_port, input_port)

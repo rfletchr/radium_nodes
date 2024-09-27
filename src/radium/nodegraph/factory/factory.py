@@ -54,75 +54,97 @@ class NodeFactory(QtCore.QObject):
         return self.__port_types[name]
 
     def createNodeInstance(self, arg: typing.Union[str, NodeType, dict], **kwargs):
-        if isinstance(arg, str):
-            prototype = self.getNodeType(arg)
-            return Node.fromPrototype(prototype, self, **kwargs)
-        elif isinstance(arg, NodeType):
-            return Node.fromPrototype(arg, self, **kwargs)
+        if isinstance(arg, NodeType):
+            node_type = arg
         elif isinstance(arg, dict):
-            return Node.fromDict(arg, self)
+            node_type = self.getNodeType(arg["node_type"])
+        elif isinstance(arg, str):
+            node_type = self.getNodeType(arg)
+
         else:
-            raise ValueError(
-                f"expected arg of type str | NodeType | dict got {type(arg)}"
-            )
+            raise TypeError(f"expected NodeType|str|dict got:{type(arg)}")
+
+        instance = Node.fromPrototype(node_type, self, **kwargs)
+        self.applyItemStyle(node_type, instance)
+
+        if isinstance(arg, dict):
+            instance.loadDict(arg, self)
+
+        return instance
 
     def createPortInstance(
         self,
         name: str,
         arg: typing.Union[str, NodeType, dict],
         is_input: bool,
+        **kwargs,
     ):
 
         cls = InputPort if is_input else OutputPort
-
         if isinstance(arg, str):
             port_type = self.getPortType(arg)
-            return cls.fromPrototype(name, port_type)
-        elif isinstance(arg, PortType):
-            return cls.fromPrototype(name, arg)
-        elif isinstance(arg, dict):
-            return cls.fromDict(arg)
 
-        raise ValueError(
-            f"expected arg of type (str,str) | PortType | dict got {type(arg)}"
-        )
+        elif isinstance(arg, dict):
+            port_type = self.getPortType(arg["data_type"])
+
+        elif isinstance(arg, NodeType):
+            port_type = arg
+        else:
+            raise ValueError("arg should be str | NodeType | dict got {type(arg)}")
+
+        instance = cls.fromPrototype(name, port_type, **kwargs)
+        self.applyItemStyle(port_type, instance)
+
+        if isinstance(arg, dict):
+            instance.loadDict(arg)
+
+        return instance
 
     def createParameterInstance(self, arg: typing.Union[str, NodeType, dict]):
         pass
 
-    def createPen(self, data: typing.Tuple):
-        members = len(data)
-        w = 2.0
-        a = 255
+    def applyItemStyle(self, type_class: typing.Union["NodeType", "PortType"], item):
+        pen = createPen(type_class.outline_color)
+        brush = createBrush(type_class.color)
+        item.setPen(pen)
+        item.setBrush(brush)
 
-        if members == 3:
-            r, g, b = data
-        elif members == 4:
-            r, g, b, a = data
-        elif members == 5:
-            r, g, b, a, w = data
-        else:
-            raise ValueError(f"outline must have between 3 and 5 members got: {data}")
 
-        color = QtGui.QColor(r, g, b, a)
-        return QtGui.QPen(color, w)
+def createPen(data: typing.Tuple):
+    members = len(data)
+    w = 2.0
+    a = 255
 
-    def createBrush(self, data: typing.Tuple):
-        members = len(data)
-        a = 255
+    if members == 3:
+        r, g, b = data
+    elif members == 4:
+        r, g, b, a = data
+    elif members == 5:
+        r, g, b, a, w = data
+    else:
+        raise ValueError(f"outline must have between 3 and 5 members got: {data}")
 
-        if members == 3:
-            r, g, b = data
-        elif members == 4:
-            r, g, b, a = data
-        else:
-            raise ValueError(f"outline must have between 3 and 4 members got: {data}")
+    color = QtGui.QColor(r, g, b, a)
+    return QtGui.QPen(color, w)
 
-        color = QtGui.QColor(r, g, b, a)
-        return QtGui.QBrush(color)
 
-    def createIcon(self, icon_str: str):
-        if os.path.exists(icon_str):
-            return QtGui.QIcon(icon_str)
-        else:
-            return qtawesome.icon(icon_str)
+def createBrush(data: typing.Tuple):
+    members = len(data)
+    a = 255
+
+    if members == 3:
+        r, g, b = data
+    elif members == 4:
+        r, g, b, a = data
+    else:
+        raise ValueError(f"outline must have between 3 and 4 members got: {data}")
+
+    color = QtGui.QColor(r, g, b, a)
+    return QtGui.QBrush(color)
+
+
+def createIcon(icon_str: str):
+    if os.path.exists(icon_str):
+        return QtGui.QIcon(icon_str)
+    else:
+        return qtawesome.icon(icon_str)
