@@ -6,7 +6,7 @@ from radium.nodegraph.graph.scene.port import Port
 from radium.nodegraph.graph.scene.node import Node
 
 if typing.TYPE_CHECKING:
-    from radium.nodegraph.node_types import NodeFactory
+    from radium.nodegraph.factory import NodeFactory
 
 
 class NodeGraphScene(QtWidgets.QGraphicsScene):

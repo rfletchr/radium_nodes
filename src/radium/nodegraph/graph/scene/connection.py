@@ -4,10 +4,10 @@ A GraphicsItem that represents a connection between two ports.
 
 import typing
 
-from PySide6 import QtGui, QtWidgets
+from PySide6 import QtGui, QtWidgets, QtCore
 
 if typing.TYPE_CHECKING:
-    from radium.nodegraph.graph.scene.port import InputPort, OutputPort
+    from radium.nodegraph.graph.scene.port import InputPort, OutputPort, Port
     from radium.nodegraph.graph.scene.node import Node
 
 
@@ -22,8 +22,6 @@ class Connection(QtWidgets.QGraphicsPathItem):
 
     def paint(self, painter, option, widget=...):
         painter.setPen(self.pen())
-        painter.drawEllipse(self.input_port.scenePos(), 6, 6)
-        painter.drawEllipse(self.output_port.scenePos(), 6, 6)
         super().paint(painter, option, widget)
 
     def updatePath(self):

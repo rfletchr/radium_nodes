@@ -7,7 +7,7 @@ from radium.nodegraph.graph.scene.backdrop import Backdrop
 from radium.nodegraph.graph.scene import NodeGraphScene, commands
 from radium.nodegraph.graph.scene.port import InputPort, OutputPort
 from radium.nodegraph.graph.scene.connection import Connection
-from radium.nodegraph.node_types.factory import NodeFactory
+from radium.nodegraph.factory.factory import NodeFactory
 
 if typing.TYPE_CHECKING:
     from radium.nodegraph.graph.view import NodeGraphView
@@ -38,7 +38,7 @@ class NodeGraphController(QtCore.QObject):
     def createNode(self, node_type) -> Node:
         node_type = self.node_factory.getNodeType(node_type)
         cmd = commands.CreateNodeCommand(self.scene, node_type, self.node_factory)
-        cmd.setText(f"Create: {node_type.node_type}")
+        cmd.setText(f"Create: {node_type.type_name}")
 
         self.undo_stack.push(cmd)
         return cmd.node

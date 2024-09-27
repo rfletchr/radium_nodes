@@ -8,7 +8,7 @@ import uuid
 from PySide6 import QtGui, QtWidgets
 
 if typing.TYPE_CHECKING:
-    from radium.nodegraph.node_types.prototypes import PortType
+    from radium.nodegraph.factory.prototypes import PortType
 
 
 class Port(QtWidgets.QGraphicsRectItem):
@@ -19,10 +19,18 @@ class Port(QtWidgets.QGraphicsRectItem):
         self.__name = name
         self.__datatype = datatype
         self.__max_connections = max_connections
+        self.__index = 0
+
         self._unique_id = unique_id or uuid.uuid4().hex
         self.setFlag(self.GraphicsItemFlag.ItemNegativeZStacksBehindParent)
         self.setFlag(self.GraphicsItemFlag.ItemSendsScenePositionChanges)
         self.setRect(-5, -5, 10, 10)
+
+    def setIndex(self, index: int):
+        self.__index = index
+
+    def index(self) -> int:
+        return self.__index
 
     def itemChange(self, change: QtWidgets.QGraphicsItem.GraphicsItemChange, value):
         if (
@@ -75,9 +83,13 @@ class Port(QtWidgets.QGraphicsRectItem):
 
     @classmethod
     def fromPrototype(cls, name, port_type: "PortType"):
-        instance = cls(name, port_type.port_type)
-        instance.setPen(port_type.pen)
-        instance.setBrush(port_type.brush)
+        instance = cls(name, port_type.type_name)
+        pen = QtGui.QPen(QtGui.QColor(*port_type.outline_color))
+        brush = QtGui.QBrush(QtGui.QColor(*port_type.color))
+
+        instance.setPen(pen)
+        instance.setBrush(brush)
+
         return instance
 
 

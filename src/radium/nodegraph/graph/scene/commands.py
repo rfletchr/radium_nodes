@@ -8,8 +8,8 @@ from radium.nodegraph.graph.scene.connection import Connection
 from radium.nodegraph.graph.scene.port import InputPort, OutputPort
 
 if typing.TYPE_CHECKING:
-    from radium.nodegraph.node_types.prototypes import NodeType
-    from radium.nodegraph.node_types.factory import NodeFactory
+    from radium.nodegraph.factory.prototypes import NodeType
+    from radium.nodegraph.factory.factory import NodeFactory
 
 
 MOVE_NODES_COMMAND_ID = 1000
