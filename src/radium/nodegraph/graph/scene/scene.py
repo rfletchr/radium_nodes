@@ -6,7 +6,7 @@ from radium.nodegraph.graph.scene.port import Port
 from radium.nodegraph.graph.scene.node import Node
 
 if typing.TYPE_CHECKING:
-    from radium.nodegraph.node_types import NodeFactory
+    from radium.nodegraph.factory import NodeFactory
 
 
 class NodeGraphScene(QtWidgets.QGraphicsScene):
@@ -69,18 +69,20 @@ class NodeGraphScene(QtWidgets.QGraphicsScene):
         for connection in connections:
             connection.updatePath()
 
-    def dumpNodes(self, node_list: typing.List[Node]):
+    def dumpDict(self):
         result = {}
         nodes = result["nodes"] = {}
         connections = result["connections"] = []
 
+        print(self.__port_to_connections)
+
         found_connections: typing.Set[Connection] = set()
 
-        for node in node_list:
+        for node in self.nodes():
             nodes[node.uniqueId()] = node.toDict()
-            for port in node.inputs():
+            for port in node.inputs().values():
                 found_connections.update(self.getConnections(port))
-            for port in node.outputs():
+            for port in node.outputs().values():
                 found_connections.update(self.getConnections(port))
 
         for connection in found_connections:
@@ -88,14 +90,10 @@ class NodeGraphScene(QtWidgets.QGraphicsScene):
 
         return result
 
-    def dumpDict(self):
-        nodes = [i for i in self.items() if isinstance(i, Node)]
-        return self.dumpNodes(nodes)
-
-    def loadDict(self, data, factory: "NodeFactory"):
+    def loadDict(self, data, node_factory: "NodeFactory"):
         nodes = {}
         for node_id, node_data in data["nodes"].items():
-            node = nodes[node_id] = Node.fromDict(node_data, factory)
+            node = nodes[node_id] = node_factory.createNodeInstance(node_data)
             self.addItem(node)
 
         for connection_data in data["connections"]:

@@ -4,7 +4,7 @@ import typing
 from PySide6 import QtGui, QtCore, QtWidgets
 
 from radium.nodegraph import constants
-from radium.nodegraph.node_types.prototypes import NodeType
+from radium.nodegraph.factory.prototypes import NodeType
 
 
 def iter_categories(node_type_name: str):
@@ -40,11 +40,16 @@ class CategoryItem(QtGui.QStandardItem):
 
 
 class NodePrototypeItem(QtGui.QStandardItem):
-    def __init__(self, node_prototype: NodeType):
-        super().__init__(node_prototype.name())
-        self.node_prototype = node_prototype
+    def __init__(self, node_type: NodeType):
+        super().__init__(node_type.name)
+        self.node_prototype = node_type
         self.setEditable(False)
         self.setIcon(qta.icon("mdi6.box-shadow"))
+        if isinstance(node_type.color, tuple):
+            self.setData(
+                QtGui.QColor(*node_type.color),
+                role=QtCore.Qt.ItemDataRole.BackgroundRole,
+            )
 
 
 class NodePrototypeModel(QtGui.QStandardItemModel):
@@ -62,7 +67,7 @@ class NodePrototypeModel(QtGui.QStandardItemModel):
     def addPrototype(self, prototype: NodeType):
         parent = self.invisibleRootItem()
 
-        for category, name in iter_categories(prototype.category()):
+        for category, name in iter_categories(prototype.category):
             if category not in self.__category_items:
                 new_parent = self.__category_items[category] = CategoryItem(name)
                 parent.appendRow(new_parent)
@@ -71,7 +76,8 @@ class NodePrototypeModel(QtGui.QStandardItemModel):
                 parent = self.__category_items[category]
 
         item = NodePrototypeItem(prototype)
-        self.__category_items[prototype.node_type] = item
+
+        self.__category_items[prototype.type_name] = item
         parent.appendRow(item)
 
     def mimeTypes(self):
@@ -82,9 +88,9 @@ class NodePrototypeModel(QtGui.QStandardItemModel):
         mimeData = QtCore.QMimeData()
 
         if isinstance(item, NodePrototypeItem):
-            mimeData.setText(item.node_prototype.node_type)
+            mimeData.setText(item.node_prototype.type_name)
             mimeData.setData(
-                constants.NODE_TYPE_MIME_TYPE, item.node_prototype.node_type.encode()
+                constants.NODE_TYPE_MIME_TYPE, item.node_prototype.type_name.encode()
             )
 
         return mimeData
@@ -92,7 +98,10 @@ class NodePrototypeModel(QtGui.QStandardItemModel):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication()
-    prototype = NodeType(node_type="General/Image/Merge")
+    prototype = NodeType(
+        name="Merge",
+        category="General/Image",
+    )
 
     model = NodePrototypeModel()
     model.addPrototype(prototype)

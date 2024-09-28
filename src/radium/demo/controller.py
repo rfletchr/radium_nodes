@@ -8,8 +8,8 @@ from PySide6 import QtWidgets, QtGui, QtCore
 from radium.nodegraph.graph import NodeGraphController
 from radium.nodegraph.graph.view import NodeGraphView
 from radium.nodegraph.browser import NodeBrowserView
-from radium.nodegraph.node_types import prototypes
-from radium.nodegraph.node_types import NodeFactory
+from radium.nodegraph.factory import prototypes
+from radium.nodegraph.factory import NodeFactory
 
 
 class MainController(QtCore.QObject):
@@ -65,34 +65,35 @@ class MainController(QtCore.QObject):
         self.node_factory.registerPortType(
             prototypes.PortType(
                 "image",
-                QtGui.QPen(QtGui.QColor(0, 127, 0, 255)),
-                QtGui.QBrush(QtGui.QColor(0, 255, 0, 255)),
+                color=(0, 127, 0, 255),
+                outline_color=(0, 100, 0, 255),
             )
         )
 
         self.node_factory.registerNodeType(
             prototypes.NodeType(
-                "Merge",
+                name="Merge",
+                category="Nodes",
                 inputs={
-                    "a": "image",
-                    "b": "image",
+                    "image_a": "image",
+                    "image_b": "image",
                 },
                 outputs={"image": "image"},
-                parameters=tuple(),
             )
         )
         self.node_factory.registerNodeType(
             prototypes.NodeType(
-                "Constant",
+                name="Constant",
+                category="Nodes",
                 outputs={"image": "image"},
-                parameters=tuple(),
                 icon="fa.image",
             )
         )
 
         self.node_factory.registerNodeType(
             prototypes.NodeType(
-                "LoadImage",
+                name="LoadImage",
+                category="Nodes",
                 outputs={"image": "image"},
                 icon="fa.file",
             )

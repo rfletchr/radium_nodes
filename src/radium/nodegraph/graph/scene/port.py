@@ -8,21 +8,37 @@ import uuid
 from PySide6 import QtGui, QtWidgets
 
 if typing.TYPE_CHECKING:
-    from radium.nodegraph.node_types.prototypes import PortType
+    from radium.nodegraph.factory.prototypes import PortType
+
+
+class PortDataDict(typing.TypedDict):
+    datatype: str
+    name: str
 
 
 class Port(QtWidgets.QGraphicsRectItem):
     def __init__(
-        self, name: str, datatype: str, unique_id=None, max_connections=1, parent=None
+        self,
+        name: str,
+        datatype: str,
+        max_connections=None,
+        parent=None,
     ):
         super().__init__(parent=parent)
         self.__name = name
         self.__datatype = datatype
-        self.__max_connections = max_connections
-        self._unique_id = unique_id or uuid.uuid4().hex
+        self.__max_connections = 1 if max_connections is None else max_connections
+        self.__index = 0
+
         self.setFlag(self.GraphicsItemFlag.ItemNegativeZStacksBehindParent)
         self.setFlag(self.GraphicsItemFlag.ItemSendsScenePositionChanges)
         self.setRect(-5, -5, 10, 10)
+
+    def setIndex(self, index: int):
+        self.__index = index
+
+    def index(self) -> int:
+        return self.__index
 
     def itemChange(self, change: QtWidgets.QGraphicsItem.GraphicsItemChange, value):
         if (
@@ -42,7 +58,7 @@ class Port(QtWidgets.QGraphicsRectItem):
         return self.scene().getConnections(self)
 
     def uniqueId(self):
-        return self._unique_id
+        return self.__unique_id
 
     def node(self):
         return self.parentItem()
@@ -63,31 +79,31 @@ class Port(QtWidgets.QGraphicsRectItem):
         return self.__name
 
     def toDict(self):
-        return {
-            "datatype": self.datatype(),
-            "name": self.name(),
-            "unique_id": self.uniqueId(),
-        }
+        return PortDataDict(
+            datatype=self.__datatype,
+            name=self.__name,
+        )
+
+    def loadDict(self, data: PortDataDict):
+        self.__name = data["name"]
+        self.__datatype = data["datatype"]
 
     @classmethod
-    def fromDict(cls, data):
-        return cls(data["name"], data["datatype"], data["unique_id"])
-
-    @classmethod
-    def fromPrototype(cls, name, port_type: "PortType"):
-        instance = cls(name, port_type.port_type)
-        instance.setPen(port_type.pen)
-        instance.setBrush(port_type.brush)
+    def fromPrototype(
+        cls,
+        name,
+        port_type: "PortType",
+    ):
+        instance = cls(name, port_type.type_name)
         return instance
 
 
 class OutputPort(Port):
-    def __init__(self, name, datatype, unique_id=None, parent=None):
+    def __init__(self, name, datatype, parent=None):
         super().__init__(
             name,
             datatype,
             max_connections=sys.maxsize,
-            unique_id=unique_id,
             parent=parent,
         )
         self.setBrush(QtGui.QColor(64, 64, 64))
@@ -100,10 +116,8 @@ class OutputPort(Port):
 
 
 class InputPort(Port):
-    def __init__(self, name, datatype, unique_id=None, parent=None):
-        super().__init__(
-            name, datatype, max_connections=1, unique_id=unique_id, parent=parent
-        )
+    def __init__(self, name, datatype, parent=None):
+        super().__init__(name, datatype, max_connections=1, parent=parent)
         self.setBrush(QtGui.QColor(127, 127, 150))
 
     def canConnectTo(self, port):

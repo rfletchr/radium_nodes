@@ -12,7 +12,7 @@ from radium.nodegraph.graph.scene.node import Node
 from radium.nodegraph.graph.scene.dot import Dot
 from radium.nodegraph.graph.scene.connection import Connection
 from radium.nodegraph.graph.scene.port import InputPort, OutputPort, Port
-from radium.nodegraph.node_types import NodeFactory
+from radium.nodegraph.factory import NodeFactory
 
 if typing.TYPE_CHECKING:
     from radium.nodegraph.graph.scene import NodeGraphScene

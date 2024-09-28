@@ -38,6 +38,6 @@ main()
 - [ ] Documentation
 
 ### Nice to have
+- [X] Custom Node / Port Coloring
+- [ ] Custom Node / Port Drawing.
 
-- [ ] Custom Node Drawing.
-- [X] Custom Port Drawing.
