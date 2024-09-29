@@ -2,13 +2,13 @@
 A GraphicsItem that represents a node in a node nodegraph.
 """
 
-import json
 import typing
 import uuid
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from radium.nodegraph.graph.scene.port import InputPort, OutputPort
+from radium.nodegraph.parameters.parameter import Parameter
 
 if typing.TYPE_CHECKING:
     from radium.nodegraph.factory.prototypes import NodeType
@@ -30,15 +30,22 @@ class Node(QtWidgets.QGraphicsRectItem):
         cls, node_type: "NodeType", factory: "NodeFactory", **kwargs
     ) -> "Node":
         kwargs.setdefault("name", node_type.name)
-        node = cls(node_type.type_name, **kwargs)
+        node = cls(factory, node_type.type_name, **kwargs)
 
         for name, port_type in node_type.inputs.items():
-            port = factory.createPortInstance(name, port_type, is_input=True)
-            node.addPort(port)
+            node.addInput(name, port_type)
 
         for name, port_type in node_type.outputs.items():
-            port = factory.createPortInstance(name, port_type, is_input=False)
-            node.addPort(port)
+            node.addOutput(name, port_type)
+
+        for name, param_data in node_type.parameters.items():
+            node.addParameter(
+                name,
+                param_data.datatype,
+                param_data.value,
+                param_data.default,
+                **param_data.metadata,
+            )
 
         return node
 
@@ -57,33 +64,40 @@ class Node(QtWidgets.QGraphicsRectItem):
             outputs={k: v.toDict() for k, v in self.outputs().items()},
         )
 
-    def loadDict(self, data: NodeDataDict, factory: "NodeFactory") -> None:
+    def loadDict(self, data: NodeDataDict) -> None:
         self.__node_type = data["node_type"]
         self.__name = data["name"]
         self.setPos(QtCore.QPointF(data["position"][0], data["position"][1]))
         self.__unique_id = data["unique_id"]
 
         for port_name, port_data in data["inputs"].items():
-            if self.hasPort(port_name, is_input=True):
+            if self.hasInput(port_name):
                 continue
-            port = factory.createPortInstance(port_name, port_data, is_input=True)
-            self.addPort(port)
+            self.addInput(port_name, port_data["datatype"])
 
         for port_name, port_data in data["outputs"].items():
-            if self.hasPort(port_name, is_input=False):
+            if self.hasOutput(port_name):
                 continue
 
-            port = factory.createPortInstance(port_name, port_data, is_input=False)
-            self.addPort(port)
+            self.addOutput(port_name, port_data["datatype"])
 
-    def __init__(self, type_name: str, name: str = None, unique_id=None, parent=None):
+    def __init__(
+        self,
+        factory: "NodeFactory",
+        type_name: str,
+        name: str = None,
+        unique_id=None,
+        parent=None,
+    ):
         super().__init__(parent)
         self.setFlag(self.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(self.GraphicsItemFlag.ItemIsSelectable)
         self.setFlag(self.GraphicsItemFlag.ItemSendsScenePositionChanges, True)
 
+        self.__factory: "NodeFactory" = factory
         self.__inputs: typing.Dict[str, InputPort] = {}
         self.__outputs: typing.Dict[str, OutputPort] = {}
+        self.__parameters: typing.Dict[str, Parameter] = {}
 
         self.__unique_id = unique_id or uuid.uuid4().hex
         self.__node_type = type_name
@@ -104,6 +118,9 @@ class Node(QtWidgets.QGraphicsRectItem):
 
     def outputs(self):
         return self.__outputs.copy()
+
+    def parameters(self):
+        return self.__parameters.copy()
 
     def uniqueId(self):
         return self.__unique_id
@@ -198,22 +215,31 @@ class Node(QtWidgets.QGraphicsRectItem):
             port.setPos(x + port.boundingRect().width() * 0.5, y)
             x += port.boundingRect().width() + spacing
 
-    def hasPort(self, name, is_input):
-        store = self.__inputs if is_input else self.__outputs
-        return name in store
+    def hasInput(self, name):
+        return name in self.__inputs
 
-    def addPort(self, port: typing.Union["InputPort", "OutputPort"]):
-        if isinstance(port, InputPort):
-            store = self.__inputs
-        elif isinstance(port, OutputPort):
-            store = self.__outputs
-        else:
-            raise TypeError(f"Unknown input/output port type: {port}")
+    def hasOutput(self, name):
+        return name in self.__outputs
 
-        if port.name() in store:
-            raise ValueError(f"Port {port.name()} already exists")
+    def addInput(self, name: str, datatype: str):
+        if self.hasInput(name):
+            raise ValueError(f"input: {name} already exists")
 
-        store[port.name()] = port
+        port = self.__factory.createPortInstance(name, datatype, True)
+        self.__inputs[name] = port
         port.setParentItem(self)
-        port.setIndex(len(store))
-        self.__dirty = True
+
+    def addOutput(self, name: str, datatype: str):
+        if self.hasOutput(name):
+            raise ValueError(f"output: {name} already exists")
+
+        port = self.__factory.createPortInstance(name, datatype, False)
+        self.__outputs[name] = port
+        port.setParentItem(self)
+
+    def hasParameter(self, name):
+        return name in self.__parameters
+
+    def addParameter(self, name, datatype, value, default, **kwargs):
+        instance = Parameter(name, datatype, value, default, **kwargs)
+        self.__parameters[name] = instance

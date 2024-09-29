@@ -4,6 +4,7 @@ from PySide6 import QtWidgets, QtCore
 from radium.nodegraph.graph.scene.connection import Connection
 from radium.nodegraph.graph.scene.port import Port
 from radium.nodegraph.graph.scene.node import Node
+from radium.nodegraph.parameters.parameter import Parameter
 
 if typing.TYPE_CHECKING:
     from radium.nodegraph.factory import NodeFactory
@@ -12,6 +13,8 @@ if typing.TYPE_CHECKING:
 class NodeGraphScene(QtWidgets.QGraphicsScene):
     itemAdded = QtCore.Signal(QtWidgets.QGraphicsItem)
     itemRemoved = QtCore.Signal(QtWidgets.QGraphicsItem)
+    selectionChanged = QtCore.Signal()
+    parameterChanged = QtCore.Signal(Parameter, object, object)
 
     def __init__(self, parent=None):
         super().__init__(parent)

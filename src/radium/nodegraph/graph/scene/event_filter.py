@@ -170,6 +170,7 @@ class BoxSelectionTool(Tool):
                 item.setSelected(True)
 
         self.controller.clearTool()
+        self.controller.scene.selectionChanged.emit()
         return True
 
 
@@ -470,6 +471,8 @@ class SelectAndMoveTool(Tool):
                 node.setSelected(False)
             item.setSelected(True)
             self.nodes = {item}
+
+        self.controller.scene.selectionChanged.emit()
 
         self.drag_start = event.scenePos()
         return True

@@ -8,11 +8,13 @@ from PySide6 import QtCore, QtGui
 from radium.nodegraph.factory.prototypes import (
     NodeType,
     PortType,
+    ParameterPrototype,
 )
 
 from radium.nodegraph.graph.scene.node import Node
 from radium.nodegraph.graph.scene.port import InputPort, OutputPort
 from radium.nodegraph.factory.model import NodePrototypeModel
+from radium.nodegraph.parameters.parameter import Parameter, ParameterDataDict
 
 
 class NodeFactory(QtCore.QObject):
@@ -65,10 +67,10 @@ class NodeFactory(QtCore.QObject):
             raise TypeError(f"expected NodeType|str|dict got:{type(arg)}")
 
         instance = Node.fromPrototype(node_type, self, **kwargs)
-        self.applyItemStyle(node_type, instance)
+        applyItemStyle(node_type, instance)
 
         if isinstance(arg, dict):
-            instance.loadDict(arg, self)
+            instance.loadDict(arg)
 
         return instance
 
@@ -77,7 +79,6 @@ class NodeFactory(QtCore.QObject):
         name: str,
         arg: typing.Union[str, NodeType, dict],
         is_input: bool,
-        **kwargs,
     ):
 
         cls = InputPort if is_input else OutputPort
@@ -92,22 +93,35 @@ class NodeFactory(QtCore.QObject):
         else:
             raise ValueError("arg should be str | NodeType | dict got {type(arg)}")
 
-        instance = cls.fromPrototype(name, port_type, **kwargs)
-        self.applyItemStyle(port_type, instance)
+        instance = cls.fromPrototype(name, port_type)
+        applyItemStyle(port_type, instance)
 
         if isinstance(arg, dict):
             instance.loadDict(arg)
 
         return instance
 
-    def createParameterInstance(self, arg: typing.Union[str, NodeType, dict]):
-        pass
+    def createParameterInstance(
+        self, arg: typing.Union[ParameterPrototype, ParameterDataDict]
+    ):
+        if isinstance(arg, ParameterPrototype):
+            instance = Parameter.fromPrototype(arg)
+        else:
+            instance = Parameter(
+                name=arg["name"],
+                data_type=arg["datatype"],
+                value=arg["value"],
+                default=arg["default"],
+                **arg["metadata"],
+            )
+        return instance
 
-    def applyItemStyle(self, type_class: typing.Union["NodeType", "PortType"], item):
-        pen = createPen(type_class.outline_color)
-        brush = createBrush(type_class.color)
-        item.setPen(pen)
-        item.setBrush(brush)
+
+def applyItemStyle(type_class: typing.Union["NodeType", "PortType"], item):
+    pen = createPen(type_class.outline_color)
+    brush = createBrush(type_class.color)
+    item.setPen(pen)
+    item.setBrush(brush)
 
 
 def createPen(data: typing.Tuple):
