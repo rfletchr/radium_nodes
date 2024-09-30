@@ -71,7 +71,7 @@ class MainController(QtCore.QObject):
         )
 
     def onParameterChanged(self, node, parameter, previous, value):
-        print(node, parameter, previous, value)
+        pass
 
     def onSelectionChanged(self):
         selection = self.node_graph_controller.scene.selectedNodes()
@@ -271,8 +271,6 @@ class MainController(QtCore.QObject):
         """
         if not self.onResetAction():
             return
-
-        print("loading filename", filename)
 
         if filename is None:
             self.__current_filename, _ = QtWidgets.QFileDialog.getOpenFileName(
