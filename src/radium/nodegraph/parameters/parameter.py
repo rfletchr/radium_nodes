@@ -117,8 +117,9 @@ class Parameter:
         return self.__metadata
 
     def setValue(self, value):
+        previous = self.__value
         self.__value = value
-        self.valueChanged.publish(value)
+        self.valueChanged.publish(previous, value)
 
     def loadDict(self, data: ParameterDataDict):
         self.__name = data["name"]
@@ -126,7 +127,7 @@ class Parameter:
         self.__value = data["value"]
         self.__default = data["default"]
 
-    def dumpDict(self):
+    def toDict(self):
         return ParameterDataDict(
             name=self.__name,
             datatype=self.__datatype,

@@ -53,7 +53,7 @@ class ParameterEditorBase(QtWidgets.QWidget):
             self.__label.setText(parameter.name())
             self.setValue(parameter.value())
 
-    def onParameterChanged(self, value):
+    def onParameterChanged(self, _, value):
         with self.muteSignals():
             self.setValue(value)
 

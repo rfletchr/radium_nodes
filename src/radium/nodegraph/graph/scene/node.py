@@ -11,6 +11,8 @@ from radium.nodegraph.graph.scene.port import InputPort, OutputPort
 from radium.nodegraph.parameters.parameter import Parameter
 
 if typing.TYPE_CHECKING:
+    from radium.nodegraph.graph.scene.port import PortDataDict
+    from radium.nodegraph.parameters.parameter import ParameterDataDict
     from radium.nodegraph.factory.prototypes import NodeType
     from radium.nodegraph.factory.factory import NodeFactory
 
@@ -20,8 +22,9 @@ class NodeDataDict(typing.TypedDict):
     name: str
     position: typing.Tuple[float, float]
     unique_id: str
-    inputs: typing.Dict[str, typing.Dict]
-    outputs: typing.Dict[str, typing.Dict]
+    inputs: typing.Dict[str, "PortDataDict"]
+    outputs: typing.Dict[str, "PortDataDict"]
+    parameters: typing.Dict[str, "ParameterDataDict"]
 
 
 class Node(QtWidgets.QGraphicsRectItem):
@@ -62,6 +65,7 @@ class Node(QtWidgets.QGraphicsRectItem):
             unique_id=self.__unique_id,
             inputs={k: v.toDict() for k, v in self.inputs().items()},
             outputs={k: v.toDict() for k, v in self.outputs().items()},
+            parameters={k: v.toDict() for k, v in self.parameters().items()},
         )
 
     def loadDict(self, data: NodeDataDict) -> None:
@@ -80,6 +84,19 @@ class Node(QtWidgets.QGraphicsRectItem):
                 continue
 
             self.addOutput(port_name, port_data["datatype"])
+
+        for parameter_name, parameter_data in data["parameters"].items():
+            if self.hasParameter(parameter_name):
+                parameter = self.parameters()[parameter_name]
+                parameter.loadDict(parameter_data)
+            else:
+                self.addParameter(
+                    parameter_name,
+                    parameter_data["datatype"],
+                    parameter_data["value"],
+                    parameter_data["default"],
+                    **parameter_data["metadata"],
+                )
 
     def __init__(
         self,
@@ -243,10 +260,12 @@ class Node(QtWidgets.QGraphicsRectItem):
     def addParameter(self, name, datatype, value, default, **kwargs):
         instance = Parameter(name, datatype, value, default, **kwargs)
 
-        # instance.valueChanged.subscribe(
-        #     lambda param, previous, value: self.scene().parameterChanged.emit(
-        #         self, param, previous, value
-        #     )
-        # )
+        def callback(
+            previous,
+            current,
+            i=instance,
+        ):
+            self.scene().parameterChanged(self, i, previous, current)
 
+        instance.valueChanged.subscribe(callback)
         self.__parameters[name] = instance

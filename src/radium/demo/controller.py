@@ -336,7 +336,7 @@ class MainController(QtCore.QObject):
                 "last_save_directory", os.path.dirname(self.__current_filename)
             )
 
-        data = self.node_graph_controller.scene.dumpDict()
+        data = self.node_graph_controller.scene.toDict()
         with open(self.__current_filename, "w") as f:
             json.dump(data, f)
 

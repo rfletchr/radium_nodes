@@ -49,7 +49,8 @@ class ParameterEditorView(QtWidgets.QWidget):
     def clear(self):
         self.list_widget.clear()
 
-        # pyside objects and weak refs don't play very nicely so unsubscribe
+        # unwrapping weakref containing a deleted pyside object results in a RuntimeError
+        # so remove all of our subscriptions
         for parameter, editor_func in self.__subs:
             parameter.valueChanged.unSubscribe(editor_func)
 

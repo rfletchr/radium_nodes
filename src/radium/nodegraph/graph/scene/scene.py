@@ -73,7 +73,7 @@ class NodeGraphScene(QtWidgets.QGraphicsScene):
         for connection in connections:
             connection.updatePath()
 
-    def dumpDict(self):
+    def toDict(self):
         result = {}
         nodes = result["nodes"] = {}
         connections = result["connections"] = []
