@@ -13,8 +13,9 @@ if typing.TYPE_CHECKING:
 class NodeGraphScene(QtWidgets.QGraphicsScene):
     itemAdded = QtCore.Signal(QtWidgets.QGraphicsItem)
     itemRemoved = QtCore.Signal(QtWidgets.QGraphicsItem)
+
     selectionChanged = QtCore.Signal()
-    parameterChanged = QtCore.Signal(Parameter, object, object)
+    parameterChanged = QtCore.Signal(Node, Parameter, object, object)
 
     def __init__(self, parent=None):
         super().__init__(parent)

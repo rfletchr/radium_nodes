@@ -242,4 +242,11 @@ class Node(QtWidgets.QGraphicsRectItem):
 
     def addParameter(self, name, datatype, value, default, **kwargs):
         instance = Parameter(name, datatype, value, default, **kwargs)
+
+        # instance.valueChanged.subscribe(
+        #     lambda param, previous, value: self.scene().parameterChanged.emit(
+        #         self, param, previous, value
+        #     )
+        # )
+
         self.__parameters[name] = instance

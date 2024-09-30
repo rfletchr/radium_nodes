@@ -1,3 +1,5 @@
+import os.path
+
 import qtawesome as qta
 import typing
 
@@ -44,12 +46,25 @@ class NodePrototypeItem(QtGui.QStandardItem):
         super().__init__(node_type.name)
         self.node_prototype = node_type
         self.setEditable(False)
-        self.setIcon(qta.icon("mdi6.box-shadow"))
+        if node_type.icon:
+            self.setIcon(self.__load_icon(node_type.icon))
+
         if isinstance(node_type.color, tuple):
             self.setData(
                 QtGui.QColor(*node_type.color),
                 role=QtCore.Qt.ItemDataRole.BackgroundRole,
             )
+
+    def __load_icon(self, icon_str: str):
+        if os.path.isfile(icon_str):
+            icon = QtGui.QIcon(icon_str)
+            return icon
+        else:
+            try:
+                icon = qta.icon(icon_str)
+                return icon
+            except Exception:
+                return None
 
 
 class NodePrototypeModel(QtGui.QStandardItemModel):

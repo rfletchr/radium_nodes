@@ -41,7 +41,7 @@ class NodeGraphView(QtWidgets.QGraphicsView):
         """
         super().drawBackground(painter, rect)
         painter.setPen(QtCore.Qt.PenStyle.NoPen)
-        painter.setBrush(self.palette().brush(self.palette().ColorRole.Window))
+        painter.setBrush(self.palette().brush(self.palette().ColorRole.Dark))
         painter.drawRect(rect)
         util.draw_grid(painter, rect, 20)
 

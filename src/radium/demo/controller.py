@@ -37,7 +37,7 @@ class MainController(QtCore.QObject):
         self.node_browser_view.setModel(self.node_factory.node_types_model)
 
         self.parameter_editor_view = ParameterEditorView()
-        self.parameter_editor_controller = ParameterEditorController()
+        self.parameter_editor_controller = ParameterEditorController(self.undo_stack)
         self.parameter_editor_controller.attachView(self.parameter_editor_view)
 
         self.central_widget = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
@@ -66,6 +66,12 @@ class MainController(QtCore.QObject):
         self.node_graph_controller.scene.selectionChanged.connect(
             self.onSelectionChanged
         )
+        self.node_graph_controller.scene.parameterChanged.connect(
+            self.onParameterChanged
+        )
+
+    def onParameterChanged(self, node, parameter, previous, value):
+        print(node, parameter, previous, value)
 
     def onSelectionChanged(self):
         selection = self.node_graph_controller.scene.selectedNodes()
@@ -112,11 +118,23 @@ class MainController(QtCore.QObject):
                 category="Nodes",
                 outputs={"image": "image"},
                 parameters={
+                    "width": prototypes.ParameterPrototype(
+                        name="width",
+                        datatype="int",
+                        value=512,
+                        metadata=dict(mimimum=0, maximum=2048),
+                    ),
+                    "height": prototypes.ParameterPrototype(
+                        name="height",
+                        datatype="int",
+                        value=512,
+                        metadata=dict(mimimum=0, maximum=2048),
+                    ),
                     "color": prototypes.ParameterPrototype(
                         name="color",
                         value=[127, 127, 127, 255],
                         datatype="RGBA",
-                    )
+                    ),
                 },
                 icon="fa.image",
             )
@@ -128,6 +146,16 @@ class MainController(QtCore.QObject):
                 category="Nodes",
                 outputs={"image": "image"},
                 icon="fa.file",
+                parameters={
+                    "filename": prototypes.ParameterPrototype(
+                        "filename",
+                        "",
+                        "file",
+                        metadata=dict(
+                            filters="Images (*.png *.jpg *.jpeg *.bmp *.gif);;All Files (*)"
+                        ),
+                    )
+                },
             )
         )
 

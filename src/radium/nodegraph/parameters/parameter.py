@@ -62,7 +62,19 @@ class Observable(typing.Generic[CallbackType]):
             self.__observers.append((True, callable_weak_ref(callback)))
 
     def unSubscribe(self, callback: CallbackType):
-        self.__observers = [o for o in self.__observers if o() is not callback]
+        subs = []
+        for is_wrapped, current_callback in self.__observers:
+            if is_wrapped:
+                current_callback = current_callback()
+            if current_callback is None:
+                continue
+
+            if callback == current_callback:
+                continue
+
+            subs.append(current_callback)
+
+        self.__observers = subs
 
 
 class ParameterDataDict(typing.TypedDict):
@@ -105,9 +117,8 @@ class Parameter:
         return self.__metadata
 
     def setValue(self, value):
-        previous = self.value
         self.__value = value
-        self.valueChanged.publish(self, previous, value)
+        self.valueChanged.publish(value)
 
     def loadDict(self, data: ParameterDataDict):
         self.__name = data["name"]
