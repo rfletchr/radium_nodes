@@ -3,6 +3,7 @@ import typing
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from radium.nodegraph.parameters.parameter import Parameter
+from radium.nodegraph.parameters.view import editors
 
 if typing.TYPE_CHECKING:
     from radium.nodegraph.parameters.view.view import ParameterEditorView
@@ -14,6 +15,7 @@ class ParameterEditorController(QtCore.QObject):
         super().__init__(parent=parent)
         self.view: typing.Optional["ParameterEditorView"] = None
         self.undo_stack = undo_stack
+        self.__node_id_to_widget = {}
 
     def onEditorValueChanged(self, parameter: Parameter, value: typing.Any):
         cmd = ChangeParameterCommand(parameter, value)
@@ -23,14 +25,17 @@ class ParameterEditorController(QtCore.QObject):
         self.view = view
         self.view.editorValueChanged.connect(self.onEditorValueChanged)
 
-    def setNode(self, node: "Node"):
-        if self.view is None:
+    def addNode(self, node: "Node"):
+        if not self.view:
             return
-        self.view.clear()
-        self.view.addParameters(node.parameters().values())
 
-    def clear(self):
-        self.view.clear()
+        self.view.addNode(node)
+
+    def removeNode(self, node: "Node"):
+        if not self.view:
+            return
+
+        self.view.removeNode(node)
 
 
 class ChangeParameterCommand(QtGui.QUndoCommand):

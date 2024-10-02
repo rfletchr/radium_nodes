@@ -4,7 +4,7 @@ A GraphicsItem that represents a node in a node nodegraph.
 
 import typing
 import uuid
-
+import qtawesome
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from radium.nodegraph.graph.scene.port import InputPort, OutputPort
@@ -27,7 +27,203 @@ class NodeDataDict(typing.TypedDict):
     parameters: typing.Dict[str, "ParameterDataDict"]
 
 
-class Node(QtWidgets.QGraphicsRectItem):
+class NodeBase(QtWidgets.QGraphicsItem):
+    def __init__(self, name: str, parent: QtWidgets.QGraphicsItem = None):
+        super().__init__(parent=parent)
+        self.setFlag(QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
+        self.setFlag(QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
+        self.__name = name
+
+        self.__edited = False
+        self.__viewed = False
+
+        self.__layout_required = True
+
+        self.__bounding_rect = QtCore.QRectF()
+        self.__edited_rect = QtCore.QRectF()
+        self.__viewed_rect = QtCore.QRectF()
+        self.__text_rect = QtCore.QRectF()
+
+        self.__corner_radius = 6.0
+        self.__min_width = 150.0
+        self.__spacing = 10.0
+
+        self.__palette = pal = QtGui.QPalette()
+
+        self.__selection_margin = 5.0
+        self.__selection_pen = QtGui.QPen(pal.color(pal.ColorRole.Highlight), 2.0)
+        self.__selection_bounding_rect = QtCore.QRectF()
+
+        self.__pen = QtGui.QPen(QtGui.QPen(QtGui.QColor(24, 24, 24, 255), 4))
+        self.__brush = QtGui.QBrush(QtGui.QBrush(QtGui.QColor(64, 64, 64, 255)))
+
+        self.__edited_brush = QtGui.QBrush(QtGui.QColor(255, 64, 64, 255))
+        self.__viewed_brush = QtGui.QBrush(QtGui.QColor(64, 64, 255, 255))
+
+        self.__font = QtGui.QFont()
+        self.__font_metrics = QtGui.QFontMetrics(self.__font)
+
+        self.__shape = QtGui.QPainterPath()
+
+    def setFont(self, font: QtGui.QFont):
+        self.__font = font
+        self.__font_metrics = QtGui.QFontMetrics(self.__font)
+        self.__layout_required = True
+        self.update()
+
+    def font(self):
+        return self.__font
+
+    def setPen(self, pen: QtGui.QPen):
+        self.__pen = pen
+        self.update()
+
+    def pen(self):
+        return self.__pen
+
+    def setBrush(self, brush: QtGui.QBrush):
+        self.__brush = brush
+        self.update()
+
+    def brush(self):
+        return self.__brush
+
+    def isEdited(self):
+        return self.__edited
+
+    def setEdited(self, edited: bool):
+        self.__edited = edited
+        self.update()
+
+    def isViewed(self):
+        return self.__viewed
+
+    def setViewed(self, viewed: bool):
+        self.__viewed = viewed
+        self.update()
+
+    def setSelected(self, selected: bool):
+        super().setSelected(selected)
+        self.update()
+
+    def setName(self, label: str):
+        self.__name = label
+        self.__layout_required = True
+        self.update()
+
+    def name(self):
+        return self.__name
+
+    def boundingRect(self):
+        if self.isEdited():
+            return self.__selection_bounding_rect
+        return self.__bounding_rect
+
+    def nonSelectionBoundingRect(self):
+        return self.__bounding_rect
+
+    def shape(self):
+        return self.__shape
+
+    def minimumWidth(self):
+        return self.__min_width
+
+    def calculateLayout(self, force=False):
+        if not self.__layout_required and not force:
+            return
+
+        self.__text_rect = self.__font_metrics.boundingRect(self.name())
+        self.__text_rect.moveCenter(QtCore.QPoint(0, 0))
+
+        edit_rect_side = self.__text_rect.height()
+
+        width = max(
+            self.minimumWidth(),
+            self.__text_rect.width() + (edit_rect_side * 2) + (self.__spacing * 2),
+        )
+
+        self.__bounding_rect.setWidth(width)
+        self.__bounding_rect.setHeight(self.__text_rect.height() * 2)
+        self.__bounding_rect.moveCenter(QtCore.QPoint(0, 0))
+
+        self.__selection_bounding_rect = self.__bounding_rect.adjusted(
+            -self.__selection_margin,
+            -self.__selection_margin,
+            self.__selection_margin,
+            self.__selection_margin,
+        )
+
+        self.__edited_rect = QtCore.QRectF(
+            self.__bounding_rect.right() - edit_rect_side,
+            self.__bounding_rect.top(),
+            edit_rect_side,
+            self.__bounding_rect.height(),
+        )
+
+        self.__viewed_rect = QtCore.QRectF(
+            self.__bounding_rect.left(),
+            self.__bounding_rect.top(),
+            edit_rect_side,
+            self.__bounding_rect.height(),
+        )
+
+        self.__shape.clear()
+        self.__shape.addRect(self.__bounding_rect)
+        self.__layout_required = False
+
+    def paint(self, painter: QtGui.QPainter, option, widget=None):
+        self.calculateLayout()
+
+        # create a clipping rect for the node with round corners if the border radius is above 0
+        if self.__corner_radius:
+            path = QtGui.QPainterPath()
+            path.addRoundedRect(
+                self.__bounding_rect, self.__corner_radius, self.__corner_radius
+            )
+            painter.setClipPath(path)
+
+        # draw the nodes background
+        painter.setPen(QtCore.Qt.PenStyle.NoPen)
+        painter.setBrush(self.__brush)
+        painter.drawRect(self.__bounding_rect)
+
+        if self.isEdited():
+            painter.setBrush(self.__edited_brush)
+            painter.drawRect(self.__edited_rect)
+
+        if self.isViewed():
+            painter.setBrush(self.__viewed_brush)
+            painter.drawRect(self.__viewed_rect)
+
+        painter.setPen(self.__palette.color(self.__palette.ColorRole.Text))
+        painter.drawText(
+            self.__text_rect, self.name(), QtCore.Qt.AlignmentFlag.AlignCenter
+        )
+
+        painter.setPen(self.__palette.color(self.__palette.ColorRole.Window))
+        painter.drawLine(self.__edited_rect.topLeft(), self.__edited_rect.bottomLeft())
+        painter.drawLine(
+            self.__viewed_rect.topRight(), self.__viewed_rect.bottomRight()
+        )
+
+        painter.setClipping(False)
+        painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+
+        painter.setPen(self.__pen)
+        painter.drawRoundedRect(
+            self.__bounding_rect, self.__corner_radius, self.__corner_radius
+        )
+
+        if self.isSelected():
+            painter.setPen(self.__selection_pen)
+            painter.drawRoundedRect(
+                self.boundingRect(),
+                self.__corner_radius,
+                self.__corner_radius,
+            )
+
+
+class Node(NodeBase):
     @classmethod
     def fromPrototype(
         cls, node_type: "NodeType", factory: "NodeFactory", **kwargs
@@ -55,14 +251,15 @@ class Node(QtWidgets.QGraphicsRectItem):
     @classmethod
     def cloneNode(cls, node: "Node", factory: "NodeFactory") -> "Node":
         data = node.toDict()
+        data["unique_id"] = uuid.uuid4().hex
         return factory.createNodeInstance(data)
 
     def toDict(self):
         return NodeDataDict(
-            node_type=self.__node_type,
-            name=self.__name,
+            node_type=self.nodeType(),
+            name=self.name(),
             position=(self.pos().x(), self.pos().y()),
-            unique_id=self.__unique_id,
+            unique_id=self.uniqueId(),
             inputs={k: v.toDict() for k, v in self.inputs().items()},
             outputs={k: v.toDict() for k, v in self.outputs().items()},
             parameters={k: v.toDict() for k, v in self.parameters().items()},
@@ -106,11 +303,7 @@ class Node(QtWidgets.QGraphicsRectItem):
         unique_id=None,
         parent=None,
     ):
-        super().__init__(parent)
-        self.setFlag(self.GraphicsItemFlag.ItemIsMovable)
-        self.setFlag(self.GraphicsItemFlag.ItemIsSelectable)
-        self.setFlag(self.GraphicsItemFlag.ItemSendsScenePositionChanges, True)
-
+        super().__init__(name or type_name, parent=parent)
         self.__factory: "NodeFactory" = factory
         self.__inputs: typing.Dict[str, InputPort] = {}
         self.__outputs: typing.Dict[str, OutputPort] = {}
@@ -118,17 +311,6 @@ class Node(QtWidgets.QGraphicsRectItem):
 
         self.__unique_id = unique_id or uuid.uuid4().hex
         self.__node_type = type_name
-        self.__name = name or type_name
-
-        self._font = QtGui.QFont("Consolas", 10)
-        self._font_metrics = QtGui.QFontMetrics(self._font)
-        self._name_rect = QtCore.QRectF()
-
-        self.palette = QtGui.QPalette()
-
-        self.__dirty = False
-        self.__rect = QtCore.QRectF()
-        self.setName(self.__name)
 
     def inputs(self):
         return self.__inputs.copy()
@@ -142,72 +324,18 @@ class Node(QtWidgets.QGraphicsRectItem):
     def uniqueId(self):
         return self.__unique_id
 
-    def name(self):
-        return self.__name
-
     def nodeType(self):
         return self.__node_type
 
-    def setName(self, value, layout=True):
-        rect = QtCore.QRectF(self._font_metrics.boundingRect(value))
-
-        self._name_rect.setWidth(rect.width())
-        self._name_rect.setHeight(rect.height())
-        self._name_rect.moveCenter(QtCore.QPointF(0, 0))
-
-        self.__name = value
-        self.__dirty = True
-
-    def paint(
-        self,
-        painter: QtGui.QPainter,
-        option: QtWidgets.QStyleOptionGraphicsItem,
-        widget=None,
-    ):
-        self.layout()
-
-        painter.setBrush(self.brush())
-        painter.drawRoundedRect(self.boundingRect(), 4, 4)
-
-        if self.isSelected():
-            color_role = self.palette.ColorRole.Highlight
-            painter.setPen(QtGui.QPen(self.palette.color(color_role), 2))
-        else:
-            painter.setPen(self.pen())
-
-        painter.drawRoundedRect(self.boundingRect(), 4, 4)
-
-        pen = self.palette.color(self.palette.ColorRole.Text)
-        painter.setPen(pen)
-        painter.setFont(self._font)
-        painter.drawText(self._name_rect, self.__name)
-
-    def layout(self):
-        if not self.__dirty:
-            return
-
-        rect = QtCore.QRectF()
-        rect.setHeight(self._name_rect.height() * 1.5)
-        rect.setWidth(max(100.0, self._name_rect.width() * 1.1))
-        rect.moveCenter(QtCore.QPointF(0, 0))
-
-        self.__rect = rect
-
+    def calculateLayout(self, force=False):
+        super().calculateLayout(force=force)
+        rect = self.nonSelectionBoundingRect()
         self.__layoutPorts(
             self.__inputs.values(), rect.top(), QtCore.Qt.AlignmentFlag.AlignTop
         )
         self.__layoutPorts(
             self.__outputs.values(), rect.bottom(), QtCore.Qt.AlignmentFlag.AlignBottom
         )
-        self.__dirty = False
-
-    def boundingRect(self):
-        return QtCore.QRectF(self.__rect)
-
-    def shape(self):
-        path = QtGui.QPainterPath()
-        path.addRect(self.__rect)
-        return path
 
     @staticmethod
     def __layoutPorts(
@@ -269,3 +397,11 @@ class Node(QtWidgets.QGraphicsRectItem):
 
         instance.valueChanged.subscribe(callback)
         self.__parameters[name] = instance
+
+    def setSelected(self, selected: bool):
+        super().setSelected(selected)
+        self.scene().nodeSelected.emit(self)
+
+    def setEdited(self, edited: bool):
+        super().setEdited(edited)
+        self.scene().nodeEdited.emit(self)

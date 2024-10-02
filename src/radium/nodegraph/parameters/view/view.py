@@ -1,8 +1,12 @@
 import sys
+import typing
 
 from PySide6 import QtWidgets, QtGui, QtCore
 from radium.nodegraph.parameters.parameter import Parameter
 from radium.nodegraph.parameters.view import editors
+
+if typing.TYPE_CHECKING:
+    from radium.nodegraph.graph.scene.node import Node
 
 
 class ParameterEditorView(QtWidgets.QWidget):
@@ -13,48 +17,56 @@ class ParameterEditorView(QtWidgets.QWidget):
         self.search = QtWidgets.QLineEdit(self)
         self.search.setPlaceholderText("Search")
 
-        self.list_widget = QtWidgets.QListWidget()
-        self.list_widget.setSelectionMode(self.list_widget.SelectionMode.NoSelection)
+        self.__container_layout = QtWidgets.QVBoxLayout()
 
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self.search)
-        layout.addWidget(self.list_widget)
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.addWidget(self.search)
+        main_layout.addLayout(self.__container_layout)
+        main_layout.addStretch(100)
 
-        self.__subs = []
+        self.__node_id_to_param_container = {}
+        self.__node_id_to_param_widget_pairs = {}
 
-    def addParameters(self, parameters):
-        for parameter in parameters:
-            editor_cls = editors.ParameterEditorBase.from_datatype(parameter.datatype())
+    def addNode(self, node: "Node"):
+        container = QtWidgets.QGroupBox(node.name())
+        container.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum
+        )
 
-            if editor_cls is None:
-                print("no widget for parameter", parameter)
-                continue
+        layout = QtWidgets.QVBoxLayout(container)
+        layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
 
-            editor = editor_cls()
-            editor.valueChanged.connect(
+        self.__node_id_to_param_container[node.uniqueId()] = container
+
+        param_pairs = self.__node_id_to_param_widget_pairs[node.uniqueId()] = []
+
+        for name, parameter in node.parameters().items():
+            widget_cls = editors.ParameterEditorBase.from_datatype(parameter.datatype())
+            widget = widget_cls()
+            widget.setup(parameter)
+
+            widget.valueChanged.connect(
                 lambda v, p=parameter: self.editorValueChanged.emit(p, v)
             )
-            editor.setup(parameter)
-            editor.layout()
 
-            parameter.valueChanged.subscribe(editor.onParameterChanged)
-            self.__subs.append((parameter, editor.onParameterChanged))
+            parameter.valueChanged.subscribe(widget.onParameterChanged)
 
-            item = QtWidgets.QListWidgetItem()
-            item.setSizeHint(editor.sizeHint())
+            param_pairs.append((parameter, widget))
+            layout.addWidget(widget)
 
-            self.list_widget.addItem(item)
-            self.list_widget.setItemWidget(item, editor)
+        self.__container_layout.insertWidget(0, container)
 
-    def clear(self):
-        self.list_widget.clear()
+    def removeNode(self, node: "Node"):
+        if node.uniqueId() not in self.__node_id_to_param_container:
+            return
 
-        # unwrapping weakref containing a deleted pyside object results in a RuntimeError
-        # so remove all of our subscriptions
-        for parameter, editor_func in self.__subs:
-            parameter.valueChanged.unSubscribe(editor_func)
+        container = self.__node_id_to_param_container.pop(node.uniqueId())
+        self.__container_layout.removeWidget(container)
+        container.deleteLater()
 
-        self.__subs.clear()
+        param_pairs = self.__node_id_to_param_widget_pairs[node.uniqueId()]
+        for param, widget in param_pairs:
+            param.valueChanged.unSubscribe(widget.onParameterChanged)
 
 
 if __name__ == "__main__":

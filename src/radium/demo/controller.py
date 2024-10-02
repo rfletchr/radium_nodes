@@ -63,23 +63,24 @@ class MainController(QtCore.QObject):
         self.initNodes()
 
         self.undo_stack.cleanChanged.connect(self.updateWindowTitle)
-        self.node_graph_controller.scene.selectionChanged.connect(
-            self.onSelectionChanged
-        )
         self.node_graph_controller.scene.parameterChanged.connect(
             self.onParameterChanged
         )
 
+        self.node_graph_controller.scene.nodeEdited.connect(self.onNodeEdited)
+        self.node_graph_controller.scene.nodeSelected.connect(self.onNodeSelected)
+
     def onParameterChanged(self, node, parameter, previous, value):
         pass
 
-    def onSelectionChanged(self):
-        selection = self.node_graph_controller.scene.selectedNodes()
+    def onNodeSelected(self, node):
+        print("selected", node)
 
-        if selection:
-            self.parameter_editor_controller.setNode(selection[0])
+    def onNodeEdited(self, node):
+        if node.isEdited():
+            self.parameter_editor_controller.addNode(node)
         else:
-            self.parameter_editor_controller.clear()
+            self.parameter_editor_controller.removeNode(node)
 
     def initNodes(self):
         """
@@ -117,6 +118,7 @@ class MainController(QtCore.QObject):
                 name="Constant",
                 category="Nodes",
                 outputs={"image": "image"},
+                color=(127, 200, 127, 155),
                 parameters={
                     "width": prototypes.ParameterPrototype(
                         name="width",

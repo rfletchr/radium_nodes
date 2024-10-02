@@ -1,5 +1,4 @@
 import os.path
-import typing
 import qtawesome as qta
 import contextlib
 from PySide6 import QtWidgets, QtGui, QtCore

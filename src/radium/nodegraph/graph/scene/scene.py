@@ -14,6 +14,9 @@ class NodeGraphScene(QtWidgets.QGraphicsScene):
     itemAdded = QtCore.Signal(QtWidgets.QGraphicsItem)
     itemRemoved = QtCore.Signal(QtWidgets.QGraphicsItem)
 
+    nodeEdited = QtCore.Signal(Node)
+    nodeSelected = QtCore.Signal(Node)
+
     selectionChanged = QtCore.Signal()
     parameterChanged = QtCore.Signal(Node, Parameter, object, object)
 

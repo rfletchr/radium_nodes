@@ -51,11 +51,15 @@ class Observable(typing.Generic[CallbackType]):
             else:
                 callback = wrapped_callback
 
+            if callback is None:
+                continue
+
             callback(*args, **kwargs)
 
     def subscribe(self, callback: CallbackType):
         # if the current object only has 2 active references then it is presumed to be a lambda function and we will
         # reference it directly so as not to let it become garbage collected.
+        print("creating sub", callback)
         if sys.getrefcount(callback) == 2:
             self.__observers.append((False, callback))
         else:
@@ -66,6 +70,7 @@ class Observable(typing.Generic[CallbackType]):
         for is_wrapped, current_callback in self.__observers:
             if is_wrapped:
                 current_callback = current_callback()
+
             if current_callback is None:
                 continue
 
