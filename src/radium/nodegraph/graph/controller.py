@@ -1,5 +1,6 @@
 import typing
-from PySide6 import QtCore, QtGui
+import logging
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from radium.nodegraph.graph.scene.node import Node
 from radium.nodegraph.graph.scene.event_filter import SceneEventFilter
@@ -11,6 +12,9 @@ from radium.nodegraph.factory.factory import NodeFactory
 
 if typing.TYPE_CHECKING:
     from radium.nodegraph.graph.view import NodeGraphView
+
+
+logger = logging.getLogger(__name__)
 
 
 class NodeGraphController(QtCore.QObject):
@@ -34,11 +38,31 @@ class NodeGraphController(QtCore.QObject):
     def attachView(self, view: "NodeGraphView"):
         view.setScene(self.scene)
         view.createNodeRequested.connect(self.onNodeCreationRequested)
+        self.setupActions(view)
+
+    def setupActions(self, view: "NodeGraphView"):
+        view_action = QtGui.QAction("Edit Node", self)
+        view_action.setData(view)
+        view_action.setShortcut("V")
+        view_action.triggered.connect(self.onViewActionTriggered)
+        view.addAction(view_action)
+
+        action = QtGui.QAction("Edit Node", self)
+        action.setData(view)
+        action.setShortcut("E")
+        action.triggered.connect(self.onEditActionTriggered)
+        view.addAction(action)
+
+        action = QtGui.QAction("Edit Node+", self)
+        action.setData(view)
+        action.setShortcut("Shift+E")
+        action.triggered.connect(self.onEditActionTriggered)
+        view.addAction(action)
 
     def createNode(self, node_type) -> Node:
-        node_type = self.node_factory.getNodeType(node_type)
+        logger.info(f"Creating node of type: {node_type}")
         cmd = commands.CreateNodeCommand(self.scene, node_type, self.node_factory)
-        cmd.setText(f"Create: {node_type.type_name}")
+        cmd.setText(f"Create: {node_type}")
 
         self.undo_stack.push(cmd)
         return cmd.node
@@ -74,3 +98,43 @@ class NodeGraphController(QtCore.QObject):
     def onNodeCreationRequested(self, node_type: str, position: QtCore.QPointF):
         node = self.createNode(node_type)
         node.setPos(position)
+
+    @QtCore.Slot()
+    def onViewActionTriggered(self):
+        action = self.sender()
+        view: "NodeGraphView" = action.data()
+        cursor = QtGui.QCursor.pos()
+        view_cursor = view.mapFromGlobal(cursor)
+        scene_pos = view.mapToScene(view_cursor)
+
+        hovered_item = self.scene.itemAt(scene_pos, QtGui.QTransform())
+
+        if isinstance(hovered_item, Node):
+            hovered_item.setViewed(not hovered_item.isViewed())
+
+            for node in self.scene.nodes():
+                if node is hovered_item:
+                    continue
+                node.setViewed(False)
+
+    @QtCore.Slot()
+    def onEditActionTriggered(self):
+        action = self.sender()
+        view: "NodeGraphView" = action.data()
+        cursor = QtGui.QCursor.pos()
+        view_cursor = view.mapFromGlobal(cursor)
+        scene_pos = view.mapToScene(view_cursor)
+
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        hovered_item = self.scene.itemAt(scene_pos, QtGui.QTransform())
+
+        if isinstance(hovered_item, Node):
+            hovered_item.setEdited(not hovered_item.isEdited())
+
+        if modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier:
+            return
+
+        for node in self.scene.nodes():
+            if node is hovered_item:
+                continue
+            node.setEdited(False)

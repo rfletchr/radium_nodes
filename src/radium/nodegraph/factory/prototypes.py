@@ -1,14 +1,17 @@
-__all__ = ["ParameterType", "NodeType", "PortType"]
+__all__ = ["ParameterPrototype", "NodeType", "PortType"]
 import typing
 import dataclasses
 
-RGBA = typing.Tuple[int, int, int, int]
+RGBA = typing.Tuple[int, ...]
 
 
 @dataclasses.dataclass(frozen=True)
-class ParameterType:
+class ParameterPrototype:
     name: str
-    default: typing.Any
+    value: typing.Any
+    datatype: str
+    default: typing.Any = None
+    metadata: typing.Dict[str, typing.Any] = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -30,8 +33,8 @@ class NodeType:
     def type_name(self) -> str:
         return f"{self.category}/{self.name}"
 
-    parameters: typing.Tuple[ParameterType, ...] = dataclasses.field(
-        default_factory=tuple
+    parameters: typing.Dict[str, ParameterPrototype] = dataclasses.field(
+        default_factory=dict
     )
 
     inputs: typing.Dict[str, str] = dataclasses.field(default_factory=dict)

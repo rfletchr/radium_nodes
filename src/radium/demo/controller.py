@@ -5,11 +5,13 @@ import typing
 import qtawesome as qta
 
 from PySide6 import QtWidgets, QtGui, QtCore
+
 from radium.nodegraph.graph import NodeGraphController
 from radium.nodegraph.graph.view import NodeGraphView
 from radium.nodegraph.browser import NodeBrowserView
 from radium.nodegraph.factory import prototypes
 from radium.nodegraph.factory import NodeFactory
+from radium.nodegraph.parameters import ParameterEditorController, ParameterEditorView
 
 
 class MainController(QtCore.QObject):
@@ -34,9 +36,15 @@ class MainController(QtCore.QObject):
         self.node_browser_view = NodeBrowserView()
         self.node_browser_view.setModel(self.node_factory.node_types_model)
 
+        self.parameter_editor_view = ParameterEditorView()
+        self.parameter_editor_view.setMinimumWidth(400)
+        self.parameter_editor_controller = ParameterEditorController(self.undo_stack)
+        self.parameter_editor_controller.attachView(self.parameter_editor_view)
+
         self.central_widget = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         self.central_widget.addWidget(self.node_browser_view)
         self.central_widget.addWidget(self.node_graph_view)
+        self.central_widget.addWidget(self.parameter_editor_view)
 
         self.main_window = QtWidgets.QMainWindow()
         self.main_window.setCentralWidget(self.central_widget)
@@ -56,6 +64,24 @@ class MainController(QtCore.QObject):
         self.initNodes()
 
         self.undo_stack.cleanChanged.connect(self.updateWindowTitle)
+        self.node_graph_controller.scene.parameterChanged.connect(
+            self.onParameterChanged
+        )
+
+        self.node_graph_controller.scene.nodeEdited.connect(self.onNodeEdited)
+        self.node_graph_controller.scene.nodeSelected.connect(self.onNodeSelected)
+
+    def onParameterChanged(self, node, parameter, previous, value):
+        pass
+
+    def onNodeSelected(self, node):
+        pass
+
+    def onNodeEdited(self, node):
+        if node.isEdited():
+            self.parameter_editor_controller.addNode(node)
+        else:
+            self.parameter_editor_controller.removeNode(node)
 
     def initNodes(self):
         """
@@ -65,8 +91,8 @@ class MainController(QtCore.QObject):
         self.node_factory.registerPortType(
             prototypes.PortType(
                 "image",
-                color=(0, 127, 0, 255),
-                outline_color=(0, 100, 0, 255),
+                color=(0, 96, 0, 255),
+                outline_color=(32, 32, 32, 255, 2),
             )
         )
 
@@ -79,6 +105,13 @@ class MainController(QtCore.QObject):
                     "image_b": "image",
                 },
                 outputs={"image": "image"},
+                parameters={
+                    "blend": prototypes.ParameterPrototype(
+                        name="blend",
+                        value=0.5,
+                        datatype="float",
+                    )
+                },
             )
         )
         self.node_factory.registerNodeType(
@@ -86,6 +119,26 @@ class MainController(QtCore.QObject):
                 name="Constant",
                 category="Nodes",
                 outputs={"image": "image"},
+                color=(64, 96, 64, 255),
+                parameters={
+                    "width": prototypes.ParameterPrototype(
+                        name="width",
+                        datatype="int",
+                        value=512,
+                        metadata=dict(mimimum=0, maximum=2048),
+                    ),
+                    "height": prototypes.ParameterPrototype(
+                        name="height",
+                        datatype="int",
+                        value=512,
+                        metadata=dict(mimimum=0, maximum=2048),
+                    ),
+                    "color": prototypes.ParameterPrototype(
+                        name="color",
+                        value=[127, 127, 127, 255],
+                        datatype="RGBA",
+                    ),
+                },
                 icon="fa.image",
             )
         )
@@ -96,6 +149,16 @@ class MainController(QtCore.QObject):
                 category="Nodes",
                 outputs={"image": "image"},
                 icon="fa.file",
+                parameters={
+                    "filename": prototypes.ParameterPrototype(
+                        "filename",
+                        "",
+                        "file",
+                        metadata=dict(
+                            filters="Images (*.png *.jpg *.jpeg *.bmp *.gif);;All Files (*)"
+                        ),
+                    )
+                },
             )
         )
 
@@ -212,8 +275,6 @@ class MainController(QtCore.QObject):
         if not self.onResetAction():
             return
 
-        print("loading filename", filename)
-
         if filename is None:
             self.__current_filename, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self.main_window,
@@ -276,7 +337,7 @@ class MainController(QtCore.QObject):
                 "last_save_directory", os.path.dirname(self.__current_filename)
             )
 
-        data = self.node_graph_controller.scene.dumpDict()
+        data = self.node_graph_controller.scene.toDict()
         with open(self.__current_filename, "w") as f:
             json.dump(data, f)
 

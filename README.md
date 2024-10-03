@@ -30,9 +30,13 @@ main()
 
 - [X] Demo Application
 - [X] Undo/Redo.
-- [X] Serialization.
+  - [X] Nodes.
+  - [X] Parameters.
+- [X] (De)Serialization.
+  - [X] Nodes
+  - [X] Parameters
 - [X] Node Browser.
-- [ ] Node Parameters.
+- [X] Node Parameters.
 - [ ] Node Groups & Gizmos
 - [ ] Graph Events or Signals
 - [ ] Documentation
