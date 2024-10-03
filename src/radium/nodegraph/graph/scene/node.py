@@ -27,6 +27,37 @@ class NodeDataDict(typing.TypedDict):
     parameters: typing.Dict[str, "ParameterDataDict"]
 
 
+from PySide6 import QtWidgets, QtCore
+
+
+class SceneSpaceShadowEffect(QtWidgets.QGraphicsDropShadowEffect):
+    """
+    A drop shadow effect which takes the scene space size into account.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self._blur_radius = super().blurRadius()
+        self._offset = super().offset()
+
+    def blurRadius(self):
+        return self._blur_radius
+
+    def offset(self):
+        return self._offset
+
+    def setBlurRadius(self, value: float):
+        self._blur_radius = value
+
+    def setOffset(self, value: QtCore.QPointF):
+        self._offset = value
+
+    def draw(self, painter):
+        super().setOffset(self._offset * painter.transform().m11())
+        super().setBlurRadius(self._blur_radius * painter.transform().m11())
+        super().draw(painter)
+
+
 class NodeBase(QtWidgets.QGraphicsItem):
     def __init__(self, name: str, parent: QtWidgets.QGraphicsItem = None):
         super().__init__(parent=parent)
@@ -115,7 +146,7 @@ class NodeBase(QtWidgets.QGraphicsItem):
         return self.__name
 
     def boundingRect(self):
-        if self.isEdited():
+        if self.isSelected():
             return self.__selection_bounding_rect
         return self.__bounding_rect
 
@@ -224,36 +255,6 @@ class NodeBase(QtWidgets.QGraphicsItem):
 
 
 class Node(NodeBase):
-    @classmethod
-    def fromPrototype(
-        cls, node_type: "NodeType", factory: "NodeFactory", **kwargs
-    ) -> "Node":
-        kwargs.setdefault("name", node_type.name)
-        node = cls(factory, node_type.type_name, **kwargs)
-
-        for name, port_type in node_type.inputs.items():
-            node.addInput(name, port_type)
-
-        for name, port_type in node_type.outputs.items():
-            node.addOutput(name, port_type)
-
-        for name, param_data in node_type.parameters.items():
-            node.addParameter(
-                name,
-                param_data.datatype,
-                param_data.value,
-                param_data.default,
-                **param_data.metadata,
-            )
-
-        return node
-
-    @classmethod
-    def cloneNode(cls, node: "Node", factory: "NodeFactory") -> "Node":
-        data = node.toDict()
-        data["unique_id"] = uuid.uuid4().hex
-        return factory.createNodeInstance(data)
-
     def toDict(self):
         return NodeDataDict(
             node_type=self.nodeType(),
@@ -312,6 +313,8 @@ class Node(NodeBase):
         self.__unique_id = unique_id or uuid.uuid4().hex
         self.__node_type = type_name
 
+        self.calculateLayout()
+
     def inputs(self):
         return self.__inputs.copy()
 
@@ -366,11 +369,11 @@ class Node(NodeBase):
     def hasOutput(self, name):
         return name in self.__outputs
 
-    def addInput(self, name: str, datatype: str):
+    def addInput(self, name: str, port_type: str):
         if self.hasInput(name):
             raise ValueError(f"input: {name} already exists")
 
-        port = self.__factory.createPortInstance(name, datatype, True)
+        port = self.__factory.createPort(InputPort, name, port_type)
         self.__inputs[name] = port
         port.setParentItem(self)
 
@@ -378,15 +381,17 @@ class Node(NodeBase):
         if self.hasOutput(name):
             raise ValueError(f"output: {name} already exists")
 
-        port = self.__factory.createPortInstance(name, datatype, False)
+        port = self.__factory.createPort(OutputPort, name, datatype)
         self.__outputs[name] = port
         port.setParentItem(self)
 
     def hasParameter(self, name):
         return name in self.__parameters
 
-    def addParameter(self, name, datatype, value, default, **kwargs):
-        instance = Parameter(name, datatype, value, default, **kwargs)
+    def addParameter(self, name, datatype, value, default, **metadata):
+        instance = self.__factory.createParameter(
+            name, datatype, value, default, metadata
+        )
 
         def callback(
             previous,

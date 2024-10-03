@@ -2,7 +2,7 @@ __all__ = ["ParameterPrototype", "NodeType", "PortType"]
 import typing
 import dataclasses
 
-RGBA = typing.Tuple[int, int, int, int]
+RGBA = typing.Tuple[int, ...]
 
 
 @dataclasses.dataclass(frozen=True)

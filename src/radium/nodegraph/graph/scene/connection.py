@@ -11,6 +11,13 @@ if typing.TYPE_CHECKING:
     from radium.nodegraph.graph.scene.node import Node
 
 
+class ConnectionDataDict(typing.TypedDict):
+    output_node: str
+    output_port: str
+    input_node: str
+    input_port: str
+
+
 class Connection(QtWidgets.QGraphicsPathItem):
     def __init__(self, output_port, input_port, parent=None):
         super().__init__(parent)
@@ -55,15 +62,19 @@ class Connection(QtWidgets.QGraphicsPathItem):
         self.setPath(path)
 
     def toDict(self):
-        return {
-            "output_node": self.output_port.node().uniqueId(),
-            "output_port": self.output_port.name(),
-            "input_node": self.input_port.node().uniqueId(),
-            "input_port": self.input_port.name(),
-        }
+        return ConnectionDataDict(
+            output_node=self.output_port.node().uniqueId(),
+            output_port=self.output_port.name(),
+            input_node=self.input_port.node().uniqueId(),
+            input_port=self.input_port.name(),
+        )
 
     @classmethod
-    def fromDict(cls, data, id_to_node_map: typing.Dict[str, "Node"]):
+    def fromDict(
+        cls,
+        data,
+        id_to_node_map: typing.Dict[str, "Node"],
+    ):
         output_node = id_to_node_map[data["output_node"]]
         output_port = output_node.outputs()[data["output_port"]]
         input_node = id_to_node_map[data["input_node"]]

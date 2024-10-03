@@ -2,17 +2,18 @@ __all__ = ["NodeFactory"]
 
 import os
 import typing
+import uuid
+
 import qtawesome
 
 from PySide6 import QtCore, QtGui
 from radium.nodegraph.factory.prototypes import (
     NodeType,
     PortType,
-    ParameterPrototype,
 )
 
-from radium.nodegraph.graph.scene.node import Node
-from radium.nodegraph.graph.scene.port import InputPort, OutputPort
+from radium.nodegraph.graph.scene.node import Node, NodeDataDict
+from radium.nodegraph.graph.scene.port import PortDataDict, Port
 from radium.nodegraph.factory.model import NodePrototypeModel
 from radium.nodegraph.parameters.parameter import Parameter, ParameterDataDict
 
@@ -46,74 +47,84 @@ class NodeFactory(QtCore.QObject):
     def hasNodeType(self, name: str) -> bool:
         return name in self.__node_types
 
-    def getNodeType(self, name):
-        return self.__node_types[name]
+    def getNodeType(self, name) -> NodeType:
+        return self.__node_types.get(name)
 
     def hasPortType(self, name: str) -> bool:
         return name in self.__node_types
 
     def getPortType(self, name):
-        return self.__port_types[name]
+        return self.__port_types.get(name)
 
-    def createNodeInstance(self, arg: typing.Union[str, NodeType, dict], **kwargs):
-        if isinstance(arg, NodeType):
-            node_type = arg
-        elif isinstance(arg, dict):
-            node_type = self.getNodeType(arg["node_type"])
-        elif isinstance(arg, str):
-            node_type = self.getNodeType(arg)
+    def cloneNode(self, node: Node) -> Node:
+        data = node.toDict()
+        data["unique_id"] = uuid.uuid4().hex
+        return self.createNode(node.nodeType(), data=data)
 
+    def createNode(self, node_type_name: str, data: NodeDataDict = None):
+        node_type = self.getNodeType(node_type_name)
+
+        if node_type is None:
+            if "/" in node_type_name:
+                name = node_type_name[node_type_name.rindex("/") :]
+            else:
+                name = node_type_name
         else:
-            raise TypeError(f"expected NodeType|str|dict got:{type(arg)}")
+            name = node_type.name
 
-        instance = Node.fromPrototype(node_type, self, **kwargs)
-        applyItemStyle(node_type, instance)
+        instance = Node(self, node_type_name, name=name)
 
-        if isinstance(arg, dict):
-            instance.loadDict(arg)
+        if node_type is not None:
+            applyItemStyle(node_type, instance)
+
+            for name, datatype in node_type.inputs.items():
+                instance.addInput(name, datatype)
+
+            for name, datatype in node_type.outputs.items():
+                instance.addOutput(name, datatype)
+
+            for name, prototype in node_type.parameters.items():
+                if prototype.datatype is None:
+                    default = prototype.value
+                else:
+                    default = prototype.default
+
+                instance.addParameter(
+                    name,
+                    prototype.datatype,
+                    prototype.value,
+                    default,
+                    **prototype.metadata,
+                )
+
+        if data:
+            instance.loadDict(data)
 
         return instance
 
-    def createPortInstance(
-        self,
-        name: str,
-        arg: typing.Union[str, NodeType, dict],
-        is_input: bool,
+    def createPort(
+        self, cls: typing.Type[Port], name, port_type: str, data: PortDataDict = None
     ):
+        instance = cls(name, port_type)
 
-        cls = InputPort if is_input else OutputPort
-        if isinstance(arg, str):
-            port_type = self.getPortType(arg)
+        port_type = self.getPortType(port_type)
+        if port_type is not None:
+            applyItemStyle(port_type, instance)
 
-        elif isinstance(arg, dict):
-            port_type = self.getPortType(arg["data_type"])
-
-        elif isinstance(arg, NodeType):
-            port_type = arg
-        else:
-            raise ValueError("arg should be str | NodeType | dict got {type(arg)}")
-
-        instance = cls.fromPrototype(name, port_type)
-        applyItemStyle(port_type, instance)
-
-        if isinstance(arg, dict):
-            instance.loadDict(arg)
+        if data:
+            instance.loadDict(data)
 
         return instance
 
-    def createParameterInstance(
-        self, arg: typing.Union[ParameterPrototype, ParameterDataDict]
+    def createParameter(
+        self, name, datatype, value, default, metadata, data: ParameterDataDict = None
     ):
-        if isinstance(arg, ParameterPrototype):
-            instance = Parameter.fromPrototype(arg)
-        else:
-            instance = Parameter(
-                name=arg["name"],
-                data_type=arg["datatype"],
-                value=arg["value"],
-                default=arg["default"],
-                **arg["metadata"],
-            )
+        default = default if default is None else value
+        instance = Parameter(name, datatype, value, default, **metadata)
+
+        if data:
+            instance.loadDict(data)
+
         return instance
 
 

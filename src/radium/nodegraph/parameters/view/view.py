@@ -1,4 +1,3 @@
-import sys
 import typing
 
 from PySide6 import QtWidgets, QtGui, QtCore

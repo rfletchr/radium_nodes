@@ -1,13 +1,18 @@
 import typing
 from PySide6 import QtWidgets, QtCore
 
-from radium.nodegraph.graph.scene.connection import Connection
+from radium.nodegraph.graph.scene.connection import Connection, ConnectionDataDict
 from radium.nodegraph.graph.scene.port import Port
-from radium.nodegraph.graph.scene.node import Node
+from radium.nodegraph.graph.scene.node import Node, NodeDataDict
 from radium.nodegraph.parameters.parameter import Parameter
 
 if typing.TYPE_CHECKING:
     from radium.nodegraph.factory import NodeFactory
+
+
+class SceneDataDict(typing.TypedDict):
+    nodes: typing.Dict[str, NodeDataDict]
+    connections: typing.List[ConnectionDataDict]
 
 
 class NodeGraphScene(QtWidgets.QGraphicsScene):
@@ -76,12 +81,10 @@ class NodeGraphScene(QtWidgets.QGraphicsScene):
         for connection in connections:
             connection.updatePath()
 
-    def toDict(self):
-        result = {}
-        nodes = result["nodes"] = {}
-        connections = result["connections"] = []
-
-        print(self.__port_to_connections)
+    def toDict(self) -> SceneDataDict:
+        result = SceneDataDict(nodes={}, connections=[])
+        nodes = result["nodes"]
+        connections = result["connections"]
 
         found_connections: typing.Set[Connection] = set()
 
@@ -97,10 +100,13 @@ class NodeGraphScene(QtWidgets.QGraphicsScene):
 
         return result
 
-    def loadDict(self, data, node_factory: "NodeFactory"):
+    def loadDict(self, data: SceneDataDict, node_factory: "NodeFactory"):
         nodes = {}
         for node_id, node_data in data["nodes"].items():
-            node = nodes[node_id] = node_factory.createNodeInstance(node_data)
+            node = nodes[node_id] = node_factory.createNode(
+                node_data["node_type"],
+                data=node_data,
+            )
             self.addItem(node)
 
         for connection_data in data["connections"]:

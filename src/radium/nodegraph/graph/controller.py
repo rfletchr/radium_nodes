@@ -1,4 +1,5 @@
 import typing
+import logging
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from radium.nodegraph.graph.scene.node import Node
@@ -11,6 +12,9 @@ from radium.nodegraph.factory.factory import NodeFactory
 
 if typing.TYPE_CHECKING:
     from radium.nodegraph.graph.view import NodeGraphView
+
+
+logger = logging.getLogger(__name__)
 
 
 class NodeGraphController(QtCore.QObject):
@@ -56,9 +60,9 @@ class NodeGraphController(QtCore.QObject):
         view.addAction(action)
 
     def createNode(self, node_type) -> Node:
-        node_type = self.node_factory.getNodeType(node_type)
+        logger.info(f"Creating node of type: {node_type}")
         cmd = commands.CreateNodeCommand(self.scene, node_type, self.node_factory)
-        cmd.setText(f"Create: {node_type.type_name}")
+        cmd.setText(f"Create: {node_type}")
 
         self.undo_stack.push(cmd)
         return cmd.node

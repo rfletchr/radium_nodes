@@ -37,6 +37,7 @@ class MainController(QtCore.QObject):
         self.node_browser_view.setModel(self.node_factory.node_types_model)
 
         self.parameter_editor_view = ParameterEditorView()
+        self.parameter_editor_view.setMinimumWidth(400)
         self.parameter_editor_controller = ParameterEditorController(self.undo_stack)
         self.parameter_editor_controller.attachView(self.parameter_editor_view)
 
@@ -74,7 +75,7 @@ class MainController(QtCore.QObject):
         pass
 
     def onNodeSelected(self, node):
-        print("selected", node)
+        pass
 
     def onNodeEdited(self, node):
         if node.isEdited():
@@ -90,8 +91,8 @@ class MainController(QtCore.QObject):
         self.node_factory.registerPortType(
             prototypes.PortType(
                 "image",
-                color=(0, 127, 0, 255),
-                outline_color=(0, 100, 0, 255),
+                color=(0, 96, 0, 255),
+                outline_color=(32, 32, 32, 255, 2),
             )
         )
 
@@ -118,7 +119,7 @@ class MainController(QtCore.QObject):
                 name="Constant",
                 category="Nodes",
                 outputs={"image": "image"},
-                color=(127, 200, 127, 155),
+                color=(64, 96, 64, 255),
                 parameters={
                     "width": prototypes.ParameterPrototype(
                         name="width",

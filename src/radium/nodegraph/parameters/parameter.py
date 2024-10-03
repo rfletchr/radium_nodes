@@ -59,7 +59,6 @@ class Observable(typing.Generic[CallbackType]):
     def subscribe(self, callback: CallbackType):
         # if the current object only has 2 active references then it is presumed to be a lambda function and we will
         # reference it directly so as not to let it become garbage collected.
-        print("creating sub", callback)
         if sys.getrefcount(callback) == 2:
             self.__observers.append((False, callback))
         else:

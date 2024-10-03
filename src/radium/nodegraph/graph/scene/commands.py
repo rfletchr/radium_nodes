@@ -17,9 +17,7 @@ MOVE_NODES_COMMAND_ID = 1000
 
 
 class CreateNodeCommand(QtGui.QUndoCommand):
-    def __init__(
-        self, scene: NodeGraphScene, node_type: "NodeType", factory: "NodeFactory"
-    ):
+    def __init__(self, scene: NodeGraphScene, node_type: str, factory: "NodeFactory"):
         super().__init__()
         self.setText("Create Node")
         self.scene = scene
@@ -29,7 +27,7 @@ class CreateNodeCommand(QtGui.QUndoCommand):
 
     def redo(self):
         if self.node is None:
-            self.node = self.factory.createNodeInstance(self.node_type)
+            self.node = self.factory.createNode(self.node_type)
 
         self.scene.addItem(self.node)
 
@@ -152,7 +150,7 @@ class CloneNodeCommand(QtGui.QUndoCommand):
         self.setText("Clone Node")
         self.scene = scene
         self.factory = factory
-        self.node = Node.cloneNode(node, factory)
+        self.node = factory.cloneNode(node)
         self.node.setPos(position if position is not None else node.pos())
 
     def redo(self):
