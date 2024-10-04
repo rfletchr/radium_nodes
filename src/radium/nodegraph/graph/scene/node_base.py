@@ -265,7 +265,7 @@ class _DrawableNode(_NodeBase):
         self.__text_rect = self.__font_metrics.boundingRect(self.name())
         self.__text_rect.moveCenter(QtCore.QPoint(0, 0))
 
-        # calculate the w/h of of the left/right indicator boxes
+        # calculate the w/h of the left/right indicator boxes
         indicator_rect_side = self.__text_rect.height()
 
         # calculate the nodes total width accounting for a min width, text width and input/output ports
