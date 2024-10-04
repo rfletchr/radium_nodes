@@ -12,7 +12,8 @@ from radium.nodegraph.factory.prototypes import (
     PortType,
 )
 
-from radium.nodegraph.graph.scene.node import Node, NodeDataDict
+from radium.nodegraph.graph.scene.node_base import NodeDataDict
+from radium.nodegraph.graph.scene.node import Node
 from radium.nodegraph.graph.scene.port import PortDataDict, Port
 from radium.nodegraph.factory.model import NodePrototypeModel
 from radium.nodegraph.parameters.parameter import Parameter, ParameterDataDict
