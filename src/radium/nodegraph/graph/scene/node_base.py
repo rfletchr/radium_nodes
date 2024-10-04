@@ -1,5 +1,4 @@
 __all__ = ["NodeBase", "NodeDataDict"]
-MIN_NODE_WIDTH = 150.0
 """
 This module contains the base class for implementing nodes. The logic is split into a number of 'private' base classes
 to break down the class a little.
@@ -20,6 +19,8 @@ if typing.TYPE_CHECKING:
     from radium.nodegraph.factory.factory import NodeFactory
 
 logger = logging.getLogger(__name__)
+
+MIN_NODE_WIDTH = 150.0
 
 
 class NodeDataDict(typing.TypedDict):
