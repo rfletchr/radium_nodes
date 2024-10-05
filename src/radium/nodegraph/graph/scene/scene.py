@@ -1,5 +1,5 @@
 import typing
-from PySide6 import QtWidgets, QtCore
+from PySide6 import QtWidgets, QtGui, QtCore
 
 from radium.nodegraph.graph.scene.connection import Connection, ConnectionDataDict
 from radium.nodegraph.graph.scene.port import Port
@@ -29,6 +29,13 @@ class NodeGraphScene(QtWidgets.QGraphicsScene):
         super().__init__(parent)
         self.setSceneRect(-10000, -10000, 20000, 20000)
         self.__port_to_connections: typing.Dict[Port, typing.List[Connection]] = {}
+        self.__view_transform = QtGui.QTransform()
+
+    def inputs(self):
+        return {n.name(): n for n in self.nodes(node_type="group_input")}
+
+    def outputs(self):
+        return {n.name(): n for n in self.nodes(node_type="group_output")}
 
     def addItem(self, item):
         if isinstance(item, Connection):
@@ -45,8 +52,16 @@ class NodeGraphScene(QtWidgets.QGraphicsScene):
 
         self.itemRemoved.emit(item)
 
-    def nodes(self):
-        return [n for n in self.items() if isinstance(n, Node)]
+    def nodes(self, node_type=None):
+        if node_type is None:
+            return [n for n in self.items() if isinstance(n, Node)]
+        else:
+            return [
+                n
+                for n in self.items()
+                if isinstance(n, Node)
+                if n.nodeType() == node_type
+            ]
 
     def selectedNodes(self):
         return [n for n in self.selectedItems() if isinstance(n, Node)]
@@ -90,6 +105,7 @@ class NodeGraphScene(QtWidgets.QGraphicsScene):
 
         for node in self.nodes():
             nodes[node.uniqueId()] = node.toDict()
+
             for port in node.inputs().values():
                 found_connections.update(self.getConnections(port))
             for port in node.outputs().values():

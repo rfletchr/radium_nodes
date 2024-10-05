@@ -107,9 +107,7 @@ class _NodeBase(QtWidgets.QGraphicsItem):
 
     def setEdited(self, edited: bool):
         self.__edited = edited
-        if hasattr(self.scene(), "nodeEdited"):
-            self.scene().nodeEdited.emit(self)  # noqa
-
+        self.scene().nodeEdited.emit(self)  # noqa
         self.update()
 
     def isViewed(self):
@@ -121,8 +119,7 @@ class _NodeBase(QtWidgets.QGraphicsItem):
 
     def setSelected(self, selected: bool):
         super().setSelected(selected)
-        if hasattr(self.scene(), "nodeSelected"):
-            self.scene().nodeSelected.emit(self)  # noqa
+        self.scene().nodeSelected.emit(self)  # noqa
 
         self.update()
 
@@ -246,6 +243,9 @@ class _DrawableNode(_NodeBase):
     def boundingRect(self):
         return self.__bounding_rect
 
+    def baseBoundingRect(self):
+        return self.__bounding_rect
+
     def setName(self, name: str):
         super().setName(name)
         self.__layout_required = True
@@ -319,18 +319,19 @@ class _DrawableNode(_NodeBase):
 
         self.__layout_required = False
 
+    def clipPath(self):
+        path = QtGui.QPainterPath()
+        path.addRoundedRect(
+            self.__bounding_rect, self.__corner_radius, self.__corner_radius
+        )
+        return path
+
     def paint(self, painter: QtGui.QPainter, option, widget=None):
         self.calculateLayout()
 
         lod = option.levelOfDetailFromTransform(painter.transform())
 
-        # create a clipping rect for the node with round corners if the border radius is above 0
-        if self.__corner_radius and lod > 0.5:
-            path = QtGui.QPainterPath()
-            path.addRoundedRect(
-                self.__bounding_rect, self.__corner_radius, self.__corner_radius
-            )
-            painter.setClipPath(path)
+        painter.setClipPath(self.clipPath())
 
         # draw the nodes background
         painter.setPen(QtCore.Qt.PenStyle.NoPen)
@@ -365,10 +366,7 @@ class _DrawableNode(_NodeBase):
             painter.setClipping(False)
             painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
 
-            painter.setPen(self.__pen)
-            painter.drawRoundedRect(
-                self.__bounding_rect, self.__corner_radius, self.__corner_radius
-            )
+            painter.strokePath(self.clipPath(), self.__pen)
 
 
 class _SelectableNode(_DrawableNode):

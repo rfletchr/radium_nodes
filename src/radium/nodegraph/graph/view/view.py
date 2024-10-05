@@ -1,3 +1,5 @@
+import typing
+
 from PySide6 import QtCore, QtWidgets, QtGui, QtOpenGLWidgets
 from radium.nodegraph.graph import util
 
@@ -6,8 +8,11 @@ from radium.nodegraph.graph.view.event_filter import (
     DragDropEventFilter,
 )
 
+from radium.nodegraph.graph.scene import NodeGraphScene
+
 
 class NodeGraphView(QtWidgets.QGraphicsView):
+    itemDoubleClicked = QtCore.Signal(QtWidgets.QGraphicsItem)
     createNodeRequested = QtCore.Signal(str, QtCore.QPointF)
 
     def __init__(self, parent=None):
@@ -34,6 +39,13 @@ class NodeGraphView(QtWidgets.QGraphicsView):
         cursor = QtGui.QCursor.pos()
         scene_pos = self.mapToScene(self.mapFromGlobal(cursor))
         self.createNodeRequested.emit(node_type, scene_pos)
+
+    def mouseDoubleClickEvent(self, event):
+        super().mouseDoubleClickEvent(event)
+
+        item = self.itemAt(event.pos())
+        if item:
+            self.itemDoubleClicked.emit(item)
 
     def drawBackground(self, painter: QtGui.QPainter, rect: QtCore.QRectF) -> None:
         """
