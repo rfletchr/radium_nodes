@@ -37,7 +37,9 @@ main()
   - [X] Parameters
 - [X] Node Browser.
 - [X] Node Parameters.
-- [ ] Node Groups & Gizmos
+- [X] Node Groups
+- [ ] Parameter Promotion.
+- [ ] Gizmos
 - [ ] Graph Events or Signals
 - [ ] Documentation
 

@@ -3,16 +3,20 @@ __all__ = ["NodeFactory"]
 import os
 import typing
 import uuid
+from unicodedata import category
 
 import qtawesome
 
 from PySide6 import QtCore, QtGui
+
+from radium.nodegraph.graph.scene.scene import NodeGraphScene
 from radium.nodegraph.factory.prototypes import (
     NodeType,
     PortType,
 )
 
 from radium.nodegraph.graph.scene.node_base import NodeDataDict
+from radium.nodegraph.graph.scene.group import Group
 from radium.nodegraph.graph.scene.node import Node
 from radium.nodegraph.graph.scene.port import PortDataDict, Port
 from radium.nodegraph.factory.model import NodePrototypeModel
@@ -22,11 +26,21 @@ from radium.nodegraph.parameters.parameter import Parameter, ParameterDataDict
 class NodeFactory(QtCore.QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.__node_types = {}
+        self.__node_types = {
+            "Util/Group": NodeType(name="Group", category="Util", node_class="group")
+        }
         self.__port_types = {}
         self.__icon_cache = {}
 
+        self.__node_classes = {
+            "default": Node,
+            "group": Group,
+        }
+
         self.node_types_model = NodePrototypeModel()
+
+        for node_type in self.__node_types.values():
+            self.node_types_model.addPrototype(node_type)
 
     def registerPortType(self, port_type: PortType, exists_ok=False):
         if port_type.type_name in self.__port_types:
@@ -57,6 +71,10 @@ class NodeFactory(QtCore.QObject):
     def getPortType(self, name):
         return self.__port_types.get(name)
 
+    def createGroup(self, name: str = None):
+        name = name or "Group"
+        return Group(self, NodeGraphScene(), name)
+
     def cloneNode(self, node: Node) -> Node:
         data = node.toDict()
         data["unique_id"] = uuid.uuid4().hex
@@ -66,14 +84,18 @@ class NodeFactory(QtCore.QObject):
         node_type = self.getNodeType(node_type_name)
 
         if node_type is None:
+            cls = Node
+
             if "/" in node_type_name:
                 name = node_type_name[node_type_name.rindex("/") :]
             else:
                 name = node_type_name
         else:
             name = node_type.name
+            cls = self.__node_classes[node_type.node_class]
 
-        instance = Node(self, node_type_name, name=name)
+        print("cls", cls)
+        instance = cls(self, node_type_name, name=name)
 
         if node_type is not None:
             applyItemStyle(node_type, instance)

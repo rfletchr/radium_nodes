@@ -57,19 +57,17 @@ class MainController(QtCore.QObject):
 
         self.__current_filename = None
         self.__recent_files: typing.List[str] = json.loads(
-            self.settings.value("recent_files", "[]")
+            self.settings.value("recent_files", "[]")  # noqa
         )
 
         self.initMenuBar()
         self.initNodes()
 
         self.undo_stack.cleanChanged.connect(self.updateWindowTitle)
-        self.node_graph_controller.scene.parameterChanged.connect(
-            self.onParameterChanged
-        )
+        self.node_graph_controller.parameterChanged.connect(self.onParameterChanged)
 
-        self.node_graph_controller.scene.nodeEdited.connect(self.onNodeEdited)
-        self.node_graph_controller.scene.nodeSelected.connect(self.onNodeSelected)
+        self.node_graph_controller.nodeEdited.connect(self.onNodeEdited)
+        self.node_graph_controller.nodeSelected.connect(self.onNodeSelected)
 
     def onParameterChanged(self, node, parameter, previous, value):
         pass
@@ -262,7 +260,7 @@ class MainController(QtCore.QObject):
                 return False
 
         self.__current_filename = None
-        self.node_graph_controller.scene.clear()
+        self.node_graph_controller.reset()
         self.undo_stack.clear()
         self.updateWindowTitle()
         return True
@@ -297,7 +295,7 @@ class MainController(QtCore.QObject):
 
         self.__storeRecentFile(self.__current_filename)
 
-        self.node_graph_controller.scene.loadDict(data, self.node_factory)
+        self.node_graph_controller.rootScene().loadDict(data, self.node_factory)
         self.updateWindowTitle()
 
     def updateWindowTitle(self):
@@ -337,9 +335,9 @@ class MainController(QtCore.QObject):
                 "last_save_directory", os.path.dirname(self.__current_filename)
             )
 
-        data = self.node_graph_controller.scene.toDict()
+        data = self.node_graph_controller.rootScene().toDict()
         with open(self.__current_filename, "w") as f:
-            json.dump(data, f)
+            json.dump(data, f, indent=2)
 
         self.undo_stack.setClean()
         self.__storeRecentFile(self.__current_filename)
@@ -350,7 +348,7 @@ class MainController(QtCore.QObject):
         """
         When the delete action has triggered delete the currently selected nodes.
         """
-        selection = self.node_graph_controller.scene.selectedNodes()
+        selection = self.node_graph_controller.activeScene().selectedNodes()
         self.undo_stack.beginMacro("Delete Selected Nodes")
         for node in selection:
             self.node_graph_controller.removeItem(node)
