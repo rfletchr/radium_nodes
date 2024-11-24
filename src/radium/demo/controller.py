@@ -89,7 +89,7 @@ class MainController(QtCore.QObject):
         self.node_factory.registerPortType(
             prototypes.PortType(
                 "image",
-                color=(0, 96, 0, 255),
+                color=(32, 96, 32, 255),
                 outline_color=(32, 32, 32, 255, 2),
             )
         )
@@ -110,6 +110,7 @@ class MainController(QtCore.QObject):
                         datatype="float",
                     )
                 },
+                color=(64, 64, 96, 255),
             )
         )
         self.node_factory.registerNodeType(

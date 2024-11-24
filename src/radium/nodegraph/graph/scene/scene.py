@@ -8,6 +8,7 @@ from radium.nodegraph.parameters.parameter import Parameter
 
 if typing.TYPE_CHECKING:
     from radium.nodegraph.factory import NodeFactory
+    from radium.nodegraph.graph.scene.group import Group
 
 
 class SceneDataDict(typing.TypedDict):
@@ -30,6 +31,13 @@ class NodeGraphScene(QtWidgets.QGraphicsScene):
         self.setSceneRect(-10000, -10000, 20000, 20000)
         self.__port_to_connections: typing.Dict[Port, typing.List[Connection]] = {}
         self.__view_transform = QtGui.QTransform()
+        self.__group: typing.Optional[Group] = None
+
+    def group(self):
+        return self.__group
+
+    def setGroup(self, group):
+        self.__group = group
 
     def inputs(self):
         return {n.name(): n for n in self.nodes(node_type="group_input")}

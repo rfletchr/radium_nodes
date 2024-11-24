@@ -3,7 +3,6 @@ __all__ = ["NodeFactory"]
 import os
 import typing
 import uuid
-from unicodedata import category
 
 import qtawesome
 
@@ -18,6 +17,7 @@ from radium.nodegraph.factory.prototypes import (
 from radium.nodegraph.graph.scene.node_base import NodeDataDict
 from radium.nodegraph.graph.scene.group import Group
 from radium.nodegraph.graph.scene.node import Node
+from radium.nodegraph.graph.scene.backdrop import Backdrop
 from radium.nodegraph.graph.scene.port import PortDataDict, Port
 from radium.nodegraph.factory.model import NodePrototypeModel
 from radium.nodegraph.parameters.parameter import Parameter, ParameterDataDict
@@ -27,7 +27,15 @@ class NodeFactory(QtCore.QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.__node_types = {
-            "Util/Group": NodeType(name="Group", category="Util", node_class="group")
+            "Util/Group": NodeType(
+                name="Group", category="Util", node_class="group", color=(96, 96, 64)
+            ),
+            "Util/Backdrop": NodeType(
+                name="Backdrop",
+                category="Util",
+                node_class="backdrop",
+                color=(127, 127, 255, 64),
+            ),
         }
         self.__port_types = {}
         self.__icon_cache = {}
@@ -35,6 +43,7 @@ class NodeFactory(QtCore.QObject):
         self.__node_classes = {
             "default": Node,
             "group": Group,
+            "backdrop": Backdrop,
         }
 
         self.node_types_model = NodePrototypeModel()
@@ -94,7 +103,6 @@ class NodeFactory(QtCore.QObject):
             name = node_type.name
             cls = self.__node_classes[node_type.node_class]
 
-        print("cls", cls)
         instance = cls(self, node_type_name, name=name)
 
         if node_type is not None:

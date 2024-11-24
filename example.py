@@ -11,14 +11,14 @@ Middle Drag background to pan view.
 
 import os
 from PySide6 import QtWidgets, QtGui
-from radium.nodegraph import NodeGraphView
+from radium.nodegraph import NodeGraphViewport
 from radium.nodegraph import NodeGraphController
 from radium.nodegraph import NodePrototype, PortPrototype
 
 os.environ["QT_SCALE_FACTOR"] = "2"
 
 app = QtWidgets.QApplication([])
-view = NodeGraphView()
+view = NodeGraphViewport()
 
 controller = NodeGraphController()
 controller.attachView(view)

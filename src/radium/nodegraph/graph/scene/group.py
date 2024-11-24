@@ -25,6 +25,17 @@ class Group(Node):
     ):
         super().__init__(factory, type_name, name=name, parent=parent)
         self.__scene = NodeGraphScene()
+        self.__scene.setGroup(self)
+
+    def qualifiedName(self) -> str:
+        if self.scene() is None:
+            return self.name()
+
+        if self.scene().group() is None:
+            return self.name()
+
+        else:
+            return self.scene().group().name() + "." + self.name()
 
     def subScene(self):
         return self.__scene

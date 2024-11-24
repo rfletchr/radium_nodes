@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class NodeGraphController(QtCore.QObject):
-    scenePushed = QtCore.Signal(NodeGraphScene)
+    sceneChanged = QtCore.Signal(NodeGraphScene)
     scenePopped = QtCore.Signal()
 
     nodeEdited = QtCore.Signal(Node)
@@ -67,7 +67,7 @@ class NodeGraphController(QtCore.QObject):
         self.__scene_stack.append(scene)
         self.__event_filters.append(event_filter)
 
-        self.scenePushed.emit(scene)
+        self.sceneChanged.emit(scene)
 
     def popScene(self):
         if len(self.__scene_stack) <= 1:
@@ -81,18 +81,28 @@ class NodeGraphController(QtCore.QObject):
         scene.nodeSelected.disconnect(self.nodeSelected)
         scene.parameterChanged.disconnect(self.parameterChanged)
 
-        self.scenePushed.emit(self.__scene_stack[-1])
+        self.sceneChanged.emit(self.__scene_stack[-1])
 
     def attachView(self, view: "NodeGraphView"):
         if self.__scene_stack:
             view.setScene(self.activeScene())
 
+        view.setHudText("Root")
         view.createNodeRequested.connect(self.onNodeCreationRequested)
         view.itemDoubleClicked.connect(self.onItemDoubleClicked)
-        self.scenePushed.connect(view.setScene)
-        self.setupActions(view)
+        self.sceneChanged.connect(view.setScene)
 
-    def setupActions(self, view: "NodeGraphView"):
+        def groupNameCallback(scene):
+            group = scene.group()
+            if not group:
+                view.setHudText("Root")
+            else:
+                view.setHudText("Root>" + group.qualifiedName().replace(".", ">"))
+
+        self.sceneChanged.connect(groupNameCallback)
+        self.setupActions(view.viewer)
+
+    def setupActions(self, view: "NodeGraphViewport"):
         view_action = QtGui.QAction("Edit Node", self)
         view_action.setData(view)
         view_action.setShortcut("V")
@@ -178,7 +188,7 @@ class NodeGraphController(QtCore.QObject):
     @QtCore.Slot()
     def onViewActionTriggered(self):
         action = self.sender()
-        view: "NodeGraphView" = action.data()
+        view: "NodeGraphViewport" = action.data()
         scene_pos = get_scene_position(view)
 
         hovered_item = self.activeScene().itemAt(scene_pos, QtGui.QTransform())
@@ -194,7 +204,7 @@ class NodeGraphController(QtCore.QObject):
     @QtCore.Slot()
     def onEditActionTriggered(self):
         action = self.sender()
-        view: "NodeGraphView" = action.data()
+        view: "NodeGraphViewport" = action.data()
         scene_pos = get_scene_position(view)
 
         modifiers = QtWidgets.QApplication.keyboardModifiers()
@@ -214,7 +224,7 @@ class NodeGraphController(QtCore.QObject):
     @QtCore.Slot()
     def onGroupActionTriggered(self):
         action = self.sender()
-        view: "NodeGraphView" = action.data()
+        view: "NodeGraphViewport" = action.data()
         scene_pos = get_scene_position(view)
         group = self.createGroup()
         group.setPos(scene_pos)

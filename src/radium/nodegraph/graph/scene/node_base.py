@@ -33,7 +33,7 @@ class NodeDataDict(typing.TypedDict):
     parameters: typing.Dict[str, "ParameterDataDict"]
 
 
-class _NodeBase(QtWidgets.QGraphicsItem):
+class NodeCore(QtWidgets.QGraphicsItem):
     def __init__(
         self,
         factory: "NodeFactory",
@@ -171,7 +171,7 @@ class _NodeBase(QtWidgets.QGraphicsItem):
                 )
 
 
-class _DrawableNode(_NodeBase):
+class PillNode(NodeCore):
     """
     This class encapsulates the drawing logic for nodes.
     """
@@ -201,8 +201,8 @@ class _DrawableNode(_NodeBase):
         self.__pen = QtGui.QPen(QtGui.QPen(QtGui.QColor(24, 24, 24, 255), 4))
         self.__brush = QtGui.QBrush(QtGui.QBrush(QtGui.QColor(64, 64, 64, 255)))
 
-        self.__edited_brush = QtGui.QBrush(QtGui.QColor(255, 64, 64, 255))
-        self.__viewed_brush = QtGui.QBrush(QtGui.QColor(64, 64, 255, 255))
+        self.__edited_brush = QtGui.QBrush(QtGui.QColor(255, 64, 64, 128))
+        self.__viewed_brush = QtGui.QBrush(QtGui.QColor(64, 64, 255, 128))
 
         self.__font = QtGui.QFont()
         self.__font_metrics = QtGui.QFontMetrics(self.__font)
@@ -369,7 +369,7 @@ class _DrawableNode(_NodeBase):
             painter.strokePath(self.clipPath(), self.__pen)
 
 
-class _SelectableNode(_DrawableNode):
+class _SelectableNode(PillNode):
     """
     This class encapsulates any custom node selection painting/logic
     """
