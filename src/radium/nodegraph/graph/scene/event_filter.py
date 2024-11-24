@@ -8,6 +8,7 @@ import uuid
 
 from PySide6 import QtCore, QtGui, QtWidgets
 from radium.nodegraph.graph.scene import commands
+from radium.nodegraph.graph.scene.group import Group
 from radium.nodegraph.graph.scene.node import Node
 from radium.nodegraph.graph.scene.dot import Dot
 from radium.nodegraph.graph.scene.connection import Connection
@@ -222,7 +223,13 @@ class ConnectionTool(Tool):
 
         scene_item = self.itemAt(event.scenePos())
 
-        if isinstance(scene_item, (Port, Dot, Node)):
+        if (
+            isinstance(scene_item, Group)
+            and event.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier
+        ):
+            self.preview_rect.hide()
+
+        elif isinstance(scene_item, (Port, Dot, Node)):
             end_port = get_potential_port(self.start_port, scene_item, event.scenePos())
             if end_port and end_port.canConnectTo(self.start_port):
                 self.preview_rect.setRect(
@@ -246,9 +253,27 @@ class ConnectionTool(Tool):
 
         scene_item = self.controller.scene.itemAt(event.scenePos(), QtGui.QTransform())
 
-        if isinstance(scene_item, (Port, Dot, Node)):
+        if (
+            isinstance(scene_item, Group)
+            and event.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier
+        ):
+
+            if isinstance(self.start_port, InputPort):
+                name = scene_item.getUniqueOutputName(self.start_port.name())
+                output_port = scene_item.addOutput(name, self.start_port.datatype())
+                input_port = self.start_port
+            else:
+                name = scene_item.getUniqueInputName(self.start_port.name())
+                input_port = scene_item.addInput(name, self.start_port.datatype())
+                output_port = self.start_port
+            cmd = commands.CreateConnectionCommand(
+                self.controller.scene, output_port, input_port
+            )
+            self.controller.undo_stack.push(cmd)
+
+        elif isinstance(scene_item, (Port, Dot, Node)):
             end_port = get_potential_port(self.start_port, scene_item, event.scenePos())
-            if end_port.canConnectTo(self.start_port):
+            if end_port and end_port.canConnectTo(self.start_port):
                 output_port, input_port = sort_ports(self.start_port, end_port)
 
                 cmd = commands.CreateConnectionCommand(

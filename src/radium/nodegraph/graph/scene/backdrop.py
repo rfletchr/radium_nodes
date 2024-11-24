@@ -1,4 +1,5 @@
 from PySide6 import QtCore, QtGui, QtWidgets
+from radium.nodegraph.graph.scene.element import SerializableBaseElement
 
 
 class BackdropHandle(QtWidgets.QGraphicsEllipseItem):
@@ -16,27 +17,23 @@ class BackdropHandle(QtWidgets.QGraphicsEllipseItem):
         return super().itemChange(change, value)
 
 
-class Backdrop(QtWidgets.QGraphicsItem):
-    def __init__(self, name, parent=None):
-        super().__init__(parent=parent)
-        self._name = name
+class Backdrop(SerializableBaseElement):
+    def __init__(self, factory, node_type, name=None, parent=None):
+        super().__init__(factory, type_name=node_type, name=name, parent=parent)
+        self._name = name or node_type
         self.corner_a = BackdropHandle(parent=self)
         self.corner_b = BackdropHandle(parent=self)
         self.corner_b.setPos(100, 100)
         self.corner_a.setPos(-100, -100)
 
-        self.__pen = QtCore.Qt.PenStyle.NoPen
-        self.__brush = QtGui.QColor(255, 127, 127, 64)
         self.setZValue(-5)
 
         self.__font = QtGui.QFont("Consolas", 10)
         self.__font_metrics = QtGui.QFontMetrics(self.__font)
-        self.__rect = QtCore.QRectF()
-        self.__text_rect = self.__font_metrics.boundingRect(self._name)
 
     def paint(self, painter, option, widget=...):
-        painter.setBrush(self.__brush)
-        painter.setPen(self.__pen)
+        painter.setBrush(self.brush())
+        painter.setPen(self.pen())
         painter.drawRoundedRect(self.boundingRect(), 6, 6)
 
         painter.setPen(QtGui.QPen(QtGui.QColor(0, 0, 0), 2))

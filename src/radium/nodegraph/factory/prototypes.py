@@ -41,3 +41,4 @@ class NodeType:
     outputs: typing.Dict[str, str] = dataclasses.field(default_factory=dict)
 
     icon: str = "fa5s.toolbox"
+    node_class: str = "default"

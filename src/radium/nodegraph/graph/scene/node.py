@@ -40,13 +40,20 @@ class Node(NodeBase):
             raise ValueError(f"input: {name} already exists")
 
         port = self.factory().createPort(InputPort, name, port_type)
-        self.__inputs[name] = port
         port.setParentItem(self)
+
+        self.__inputs[name] = port
+        self.invalidateLayout()
+
+        return port
 
     def addOutput(self, name: str, datatype: str):
         if self.hasOutput(name):
             raise ValueError(f"output: {name} already exists")
 
         port = self.factory().createPort(OutputPort, name, datatype)
-        self.__outputs[name] = port
         port.setParentItem(self)
+
+        self.__outputs[name] = port
+        self.invalidateLayout()
+        return port
